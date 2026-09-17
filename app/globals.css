@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  YellowMetal LeadDesk — dark-only brand theme.
+  This is a deliberate brand choice; it does not adapt to system light mode.
+*/
+:root {
+  --surface: #0e0e0e;
+  --surface-dim: #0a0a0a;
+  --surface-bright: #1a1a1a;
+  --surface-container-lowest: #050505;
+  --surface-container-low: #0f0f0f;
+  --surface-container: #161616;
+  --surface-container-high: #232323;
+  --surface-container-highest: #2a2a2a;
+  --on-surface: #f9fbff;
+  --on-surface-variant: #898b8d;
+  --outline: #414141;
+  --outline-variant: #333333;
+  --primary: #4124fb;
+  --on-primary: #f9fbff;
+  --primary-container: #5a3fff;
+  --on-primary-container: #f9fbff;
+  --secondary: #ffdb4b;
+  --on-secondary: #0e0e0e;
+  --secondary-container: #ffe680;
+  --on-secondary-container: #1a1a1a;
+  --error: #ff6b6b;
+  --on-error: #f9fbff;
+  --error-container: #8b0000;
+  --on-error-container: #f9fbff;
+  --background: #0e0e0e;
+  --on-background: #f9fbff;
+
+  /* shadcn/ui semantic aliases, mapped onto the brand tokens above */
+  --foreground: var(--on-background);
+  --card: var(--surface-container);
+  --card-foreground: var(--on-surface);
+  --popover: var(--surface-container-high);
+  --popover-foreground: var(--on-surface);
+  --primary-foreground: var(--on-primary);
+  --secondary-foreground: var(--on-secondary);
+  --muted: var(--surface-container-high);
+  --muted-foreground: var(--on-surface-variant);
+  --accent: var(--surface-container-high);
+  --accent-foreground: var(--on-surface);
+  --destructive: var(--error);
+  --destructive-foreground: var(--on-error);
+  --border: var(--outline-variant);
+  --input: var(--outline-variant);
+  --ring: var(--primary);
+
+  --sidebar-background: var(--surface-container-lowest);
+  --sidebar-foreground: var(--on-surface);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--on-primary);
+  --sidebar-accent: var(--surface-container);
+  --sidebar-accent-foreground: var(--on-surface);
+  --sidebar-border: var(--outline-variant);
+  --sidebar-ring: var(--primary);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
