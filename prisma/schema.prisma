@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PartnerStatus {
+  invited
+  active
+  disabled
+}
+
+enum LeadStatus {
+  New
+  Contacted
+  Converted
+  Rejected
+}
+
+enum LeadSource {
+  PARTNER
+  AARTHIKLABS
+}
+
+enum AcceptanceState {
+  NA
+  ACCEPTED
+  EXPIRED_UNACCEPTED
+}
+
+enum BranchManagerStatus {
+  NOT_SENT
+  SENT
+  CONFIRMED
+  DECLINED
+}
+
+enum ActivityKind {
+  SUBMITTED
+  STATUS_CHANGED
+}
+
+model Partner {
+  id           String        @id @default(cuid())
+  orgName      String        @map("org_name")
+  contactEmail String        @map("contact_email")
+  status       PartnerStatus @default(invited)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  leads        Lead[]
+
+  @@index([contactEmail])
+  @@map("partners")
+}
+
+model Lead {
+  id                  String              @id @default(cuid())
+  leadNo              Int                 @unique @default(autoincrement()) @map("lead_no")
+  partnerId           String?             @map("partner_id")
+  source              LeadSource          @default(PARTNER)
+  distributorRefId    String?             @unique @map("distributor_ref_id")
+  name                String
+  mobile              String
+  address             String
+  pinCode             String              @map("pin_code")
+  loanAmount          Decimal?            @map("loan_amount") @db.Decimal(12, 2)
+  dob                 DateTime?
+  goldGrams           Decimal?            @map("gold_grams") @db.Decimal(10, 3)
+  offerAmount         Decimal?            @map("offer_amount") @db.Decimal(12, 2)
+  ltvPercent          Decimal?            @map("ltv_percent") @db.Decimal(5, 2)
+  kfsReference        String?             @map("kfs_reference")
+  acceptanceState     AcceptanceState     @default(NA) @map("acceptance_state")
+  status              LeadStatus          @default(New)
+  duplicateFlag       Boolean             @default(false) @map("duplicate_flag")
+  branchManagerStatus BranchManagerStatus @default(NOT_SENT) @map("branch_manager_status")
+  loanConfirmedAmount Decimal?            @map("loan_confirmed_amount") @db.Decimal(12, 2)
+  loanConfirmedAt     DateTime?           @map("loan_confirmed_at")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  partner    Partner?       @relation(fields: [partnerId], references: [id])
+  activities LeadActivity[]
+
+  @@index([mobile])
+  @@index([pinCode])
+  @@index([loanAmount])
+  @@index([offerAmount])
+  @@index([createdAt])
+  @@index([status])
+  @@index([source])
+  @@index([partnerId])
+  @@map("leads")
+}
+
+model LeadActivity {
+  id         String       @id @default(cuid())
+  leadId     String       @map("lead_id")
+  kind       ActivityKind
+  fromStatus LeadStatus?  @map("from_status")
+  toStatus   LeadStatus?  @map("to_status")
+  message    String
+  actor      String?
+  createdAt  DateTime     @default(now()) @map("created_at")
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, createdAt])
+  @@map("lead_activities")
+}

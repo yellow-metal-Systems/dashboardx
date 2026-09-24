@@ -3,63 +3,85 @@
 @tailwind utilities;
 
 /*
-  YellowMetal LeadDesk — dark-only brand theme.
-  This is a deliberate brand choice; it does not adapt to system light mode.
+  YellowMetal LeadDesk — matches the Yellow Metal LMS design system
+  (see LMS-DESIGN-SYSTEM.md): black/white/grey surfaces, blue links,
+  green/red/grey/black tags. Light-only by design.
 */
 :root {
-  --surface: #0e0e0e;
-  --surface-dim: #0a0a0a;
-  --surface-bright: #1a1a1a;
-  --surface-container-lowest: #050505;
-  --surface-container-low: #0f0f0f;
-  --surface-container: #161616;
-  --surface-container-high: #232323;
-  --surface-container-highest: #2a2a2a;
-  --on-surface: #f9fbff;
-  --on-surface-variant: #898b8d;
-  --outline: #414141;
-  --outline-variant: #333333;
-  --primary: #4124fb;
-  --on-primary: #f9fbff;
-  --primary-container: #5a3fff;
-  --on-primary-container: #f9fbff;
-  --secondary: #ffdb4b;
-  --on-secondary: #0e0e0e;
-  --secondary-container: #ffe680;
-  --on-secondary-container: #1a1a1a;
-  --error: #ff6b6b;
-  --on-error: #f9fbff;
-  --error-container: #8b0000;
-  --on-error-container: #f9fbff;
-  --background: #0e0e0e;
-  --on-background: #f9fbff;
+  --surface: #e2e2e2;
+  --surface-dim: #eeeeee;
+  --surface-bright: #ffffff;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #f6f6f6;
+  --surface-container: #f6f6f6;
+  --surface-container-high: #f6f6f6;
+  --surface-container-highest: #eeeeee;
+  --on-surface: #000000;
+  --on-surface-variant: #545454;
+  --outline: #e2e2e2;
+  --outline-variant: #e2e2e2;
+  --primary: #000000;
+  --on-primary: #ffffff;
+  --primary-container: #eeeeee;
+  --on-primary-container: #000000;
+  --secondary: #eeeeee;
+  --on-secondary: #000000;
+  --secondary-container: #f3f3f3;
+  --on-secondary-container: #5e5e5e;
+  --success: #048848;
+  --on-success: #ffffff;
+  --success-container: #eaf6ed;
+  --on-success-container: #166c3b;
+  --error: #e11900;
+  --on-error: #ffffff;
+  --error-container: #fff0ee;
+  --on-error-container: #bb032a;
+  --background: #e2e2e2;
+  --on-background: #000000;
+
+  /* Roles the LMS doc names that the MD3 surface/success/error pairs above
+     don't have slots for — added rather than overloaded, so each doc role
+     keeps its own exact value. */
+  --label: #868686;
+  --info-label: #a6a6a6;
+  --disabled: #afafaf;
+  --placeholder: #8c8c8c;
+  --link: #276ef1;
+  --link-hover: #175bcc;
+  --success-solid: #0e8345;
+  --error-solid: #de1135;
+  --warning: #ffc043;
+  --grey-solid: #5e5e5e;
+  --black-solid: #000000;
+  --count: #ff3b30;
 
   /* shadcn/ui semantic aliases, mapped onto the brand tokens above */
   --foreground: var(--on-background);
-  --card: var(--surface-container);
+  --card: var(--surface-container-lowest);
   --card-foreground: var(--on-surface);
-  --popover: var(--surface-container-high);
+  --popover: var(--surface-container-lowest);
   --popover-foreground: var(--on-surface);
   --primary-foreground: var(--on-primary);
   --secondary-foreground: var(--on-secondary);
-  --muted: var(--surface-container-high);
+  --muted: var(--surface-container);
   --muted-foreground: var(--on-surface-variant);
   --accent: var(--surface-container-high);
   --accent-foreground: var(--on-surface);
-  --destructive: var(--error);
+  --destructive: var(--error-solid);
   --destructive-foreground: var(--on-error);
   --border: var(--outline-variant);
   --input: var(--outline-variant);
   --ring: var(--primary);
 
-  --sidebar-background: var(--surface-container-lowest);
-  --sidebar-foreground: var(--on-surface);
-  --sidebar-primary: var(--primary);
-  --sidebar-primary-foreground: var(--on-primary);
-  --sidebar-accent: var(--surface-container);
-  --sidebar-accent-foreground: var(--on-surface);
-  --sidebar-border: var(--outline-variant);
-  --sidebar-ring: var(--primary);
+  --sidebar-background: #ffffff;
+  --sidebar-foreground: #000000;
+  --sidebar-muted: #868686;
+  --sidebar-primary: #000000;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f6f6f6;
+  --sidebar-accent-foreground: #000000;
+  --sidebar-border: #e2e2e2;
+  --sidebar-ring: #000000;
 }
 
 @layer base {

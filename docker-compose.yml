@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16-alpine
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: leaddesk
+      POSTGRES_PASSWORD: leaddesk
+      POSTGRES_DB: leaddesk
+    volumes:
+      - leaddesk-pgdata:/var/lib/postgresql/data
+
+volumes:
+  leaddesk-pgdata:

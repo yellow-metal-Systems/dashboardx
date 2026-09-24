@@ -59,6 +59,7 @@ const config: Config = {
           "accent-foreground": "var(--sidebar-accent-foreground)",
           border: "var(--sidebar-border)",
           ring: "var(--sidebar-ring)",
+          muted: "var(--sidebar-muted)",
         },
 
         // YellowMetal LeadDesk brand tokens (design spec — do not rename)
@@ -90,6 +91,14 @@ const config: Config = {
           DEFAULT: "var(--on-secondary)",
           container: "var(--on-secondary-container)",
         },
+        success: {
+          DEFAULT: "var(--success)",
+          container: "var(--success-container)",
+        },
+        "on-success": {
+          DEFAULT: "var(--on-success)",
+          container: "var(--on-success-container)",
+        },
         error: {
           DEFAULT: "var(--error)",
           container: "var(--error-container)",
@@ -99,6 +108,22 @@ const config: Config = {
           container: "var(--on-error-container)",
         },
         "on-background": "var(--on-background)",
+
+        // LMS design-system roles with no MD3 slot to share (see globals.css)
+        label: "var(--label)",
+        "info-label": "var(--info-label)",
+        disabled: "var(--disabled)",
+        placeholder: "var(--placeholder)",
+        link: {
+          DEFAULT: "var(--link)",
+          hover: "var(--link-hover)",
+        },
+        "success-solid": "var(--success-solid)",
+        "error-solid": "var(--error-solid)",
+        warning: "var(--warning)",
+        "grey-solid": "var(--grey-solid)",
+        "black-solid": "var(--black-solid)",
+        count: "var(--count)",
       },
       borderRadius: {
         sm: "0.25rem",
@@ -107,6 +132,19 @@ const config: Config = {
         lg: "1rem",
         xl: "1.5rem",
         full: "9999px",
+      },
+      fontSize: {
+        // Yellow Metal LMS type scale (LMS-DESIGN-SYSTEM.md) — [size, {lineHeight, fontWeight}]
+        "heading-xl": ["32px", { lineHeight: "44px", fontWeight: "800" }],
+        "heading-lg": ["24px", { lineHeight: "36px", fontWeight: "800" }],
+        "heading-md": ["20px", { lineHeight: "32px", fontWeight: "800" }],
+        "heading-sm": ["16px", { lineHeight: "22px", fontWeight: "800" }],
+        "label-lg": ["16px", { lineHeight: "22px", fontWeight: "800" }],
+        "label-md": ["14px", { lineHeight: "20px", fontWeight: "800" }],
+        "label-sm": ["12px", { lineHeight: "20px", fontWeight: "800" }],
+        "paragraph-lg": ["16px", { lineHeight: "24px", fontWeight: "600" }],
+        "paragraph-md": ["14px", { lineHeight: "22px", fontWeight: "600" }],
+        "paragraph-sm": ["12px", { lineHeight: "16px", fontWeight: "400" }],
       },
     },
   },

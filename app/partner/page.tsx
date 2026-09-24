@@ -31,11 +31,11 @@ export default function PartnerPage() {
   return (
     <main className="flex min-h-svh items-center justify-center bg-background px-4 py-10">
       <Card className="w-full max-w-md">
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 md:pt-9">
           <p className="text-xs font-medium uppercase tracking-wide text-on-surface-variant">
             Partner
           </p>
-          <h1 className="mt-1 text-2xl font-semibold text-on-surface">
+          <h1 className="mt-1 text-heading-lg text-on-surface">
             Submit a lead
           </h1>
           <p className="mt-1 text-sm text-on-surface-variant">
