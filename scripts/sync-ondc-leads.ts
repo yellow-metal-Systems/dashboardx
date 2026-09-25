@@ -29,16 +29,18 @@ type OndcLeadsResponse = {
   pagination: { page: number; limit: number; total: number; total_pages: number };
 };
 
-// Only LEAD_CREATED and DISBURSED are confirmed real backend status values
-// (see server repo's QUESTIONS.md). UNDISBURSED is the backend's value for
-// its 7-working-day timeout (Atharva's call 2026-09-25, still pending
-// re-verification - was EXPIRED before), mapped the same way LeadDesk maps
-// its own timed-out leads: to Rejected. Anything else unrecognized still
-// falls back to New, but explicitly now instead of silently.
+// LEAD_CREATED, DISBURSED, REJECTED are AarthikLabs' own confirmed status
+// examples ("Lead created, Disbursed, Rejected, or any other intermediary
+// status available with you") - REJECTED doubles as the backend's own
+// 7-working-day timeout value (settled 2026-09-25; was EXPIRED, then
+// briefly UNDISBURSED). Maps 1:1 in name to LeadDesk's own Rejected -
+// different systems, same word, not a coincidence to worry about.
+// Anything else unrecognized falls back to New, explicitly now instead
+// of silently.
 const STATUS_MAP: Record<string, LeadStatus> = {
   LEAD_CREATED: "New",
   DISBURSED: "Converted",
-  UNDISBURSED: "Rejected",
+  REJECTED: "Rejected",
 };
 
 function mapStatus(status: string): LeadStatus {
@@ -51,7 +53,7 @@ function mapStatus(status: string): LeadStatus {
 // blindly re-writing that on every run clobbers local-only progress the
 // backend doesn't know about (staff marking a lead Contacted, or
 // LeadDesk's own 7-working-day timeout auto-rejecting it) back to New.
-const TERMINAL_BACKEND_STATUSES = new Set(["DISBURSED", "UNDISBURSED"]);
+const TERMINAL_BACKEND_STATUSES = new Set(["DISBURSED", "REJECTED"]);
 
 function isTerminalBackendStatus(status: string): boolean {
   return TERMINAL_BACKEND_STATUSES.has(status.trim().toUpperCase());
