@@ -1,5 +1,12 @@
 {
-  "crons": [
-    { "path": "/api/cron/auto-close-leads", "schedule": "0 3 * * *" }
-  ]
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "//": [
+    "The `crons` entry for /api/cron/auto-close-leads was REMOVED along with that",
+    "route. Lead expiry is now owned solely by the serverx repo's",
+    "LeadLifecycleService, which sweeps hourly. With one shared leads table, two",
+    "expiry jobs would race on the same rows with different candidate sets and",
+    "each look correct in isolation. Do not re-add a cron here without removing",
+    "the one in serverx first."
+  ],
+  "framework": "nextjs"
 }
