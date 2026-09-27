@@ -1,28 +1,55 @@
+// =============================================================================
+// LeadDesk — Prisma schema. THIS REPO OWNS NO MIGRATIONS.
+// =============================================================================
+//
+// These tables are SHARED with the `serverx` repo (the Express service that
+// serves the AarthikLabs/ONDC contracts). serverx's prisma/schema.prisma is the
+// single source of truth for the physical schema and the only place migrations
+// are authored. This file is a client-generation artefact.
+//
+// AFTER serverx SHIPS A MIGRATION:
+//   npx prisma db pull      # rewrites this file from the live database
+//   npx prisma generate
+// then re-apply by hand the two conventions `db pull` flattens:
+//   1. camelCase field names with @map("snake_case") — db pull renames fields to
+//      raw column names, which would break every call site in this repo.
+//   2. the model-level comments below.
+//
+// NEVER run `prisma migrate dev`, `prisma migrate deploy` or `prisma db push`
+// here. Any of them would try to reshape tables serverx owns. The `db:migrate`
+// script was removed from package.json for this reason, and prisma/migrations/
+// was deleted (its one migration never even created the distributor_ref_id
+// column this schema used to declare, so it was not a truthful record of the
+// database anyway).
+//
+// WHICH COLUMNS THIS REPO MAY WRITE:
+//   status, acceptanceState, duplicateFlag, branchManagerStatus,
+//   loanConfirmedAmount, loanConfirmedAt, partnerId, source, loanAmount,
+//   offerAmount, ltvPercent, kfsReference
+//   ...plus everything on Partner, LeadActivity, LeadStatusOutbox and AdminUser.
+// Partner-owned columns (customerId, loanId, disbursement*, productType, tenure*,
+// offerAcceptedAt, and the borrower identity fields) are written by serverx.
+// Reading any column is always fine.
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum LeadSource {
+  PARTNER
+  AARTHIKLABS
 }
 
 enum PartnerStatus {
   invited
   active
   disabled
-}
-
-enum LeadStatus {
-  New
-  Contacted
-  Converted
-  Rejected
-}
-
-enum LeadSource {
-  PARTNER
-  AARTHIKLABS
 }
 
 enum AcceptanceState {
@@ -41,6 +68,83 @@ enum BranchManagerStatus {
 enum ActivityKind {
   SUBMITTED
   STATUS_CHANGED
+  DISBURSEMENT_RECORDED
+  AUTO_CLOSED
+  WEBHOOK_QUEUED
+  WEBHOOK_DELIVERED
+  WEBHOOK_FAILED
+}
+
+// NOTE: there is deliberately NO `LeadStatus` enum. `status` is a text column
+// carrying the canonical UPPER_SNAKE vocabulary (LEAD_CREATED, CONTACTED,
+// BRANCH_VISIT_SCHEDULED, DISBURSED, REJECTED), because AarthikLabs confirmed the
+// vocabulary is ours to extend and adding a value must not require a migration.
+// Parse it through `parseLeadStatus()` in lib/leads.ts, which tolerates an
+// unrecognised value instead of crashing the page.
+
+model Lead {
+  id      String @id
+  leadNo  Int    @unique @default(autoincrement()) @map("lead_no")
+
+  customerId String? @map("customer_id")
+  loanId     String? @unique @map("loan_id")
+
+  source    LeadSource @default(PARTNER)
+  partnerId String?    @map("partner_id")
+
+  name          String
+  mobile        String    @map("mobile_number")
+  pinCode       String    @map("pincode")
+  addressLine1  String?   @map("address_line_1")
+  addressLine2  String?   @map("address_line_2")
+  dob           DateTime? @map("date_of_birth") @db.Date
+  gender        String?
+  /// PII. Never render this in the UI or include it in a log line.
+  pan           String?
+
+  goldGrams       Decimal?  @map("gold_weight_grams") @db.Decimal(10, 3)
+  loanAmount      Decimal?  @map("loan_amount") @db.Decimal(12, 2)
+  offerAmount     Decimal?  @map("offer_amount") @db.Decimal(12, 2)
+  ltvPercent      Decimal?  @map("ltv_percent") @db.Decimal(5, 2)
+  kfsReference    String?   @map("kfs_reference")
+  offerAcceptedAt DateTime? @map("offer_accepted_at") @db.Timestamptz(3)
+
+  status String @default("LEAD_CREATED")
+
+  acceptanceState     AcceptanceState     @default(NA) @map("acceptance_state")
+  duplicateFlag       Boolean             @default(false) @map("duplicate_flag")
+  branchManagerStatus BranchManagerStatus @default(NOT_SENT) @map("branch_manager_status")
+  loanConfirmedAmount Decimal?            @map("loan_confirmed_amount") @db.Decimal(12, 2)
+  loanConfirmedAt     DateTime?           @map("loan_confirmed_at") @db.Timestamptz(3)
+
+  disbursementAmount Decimal?  @map("disbursement_amount") @db.Decimal(12, 2)
+  disbursementDate   DateTime? @map("disbursement_date") @db.Date
+  productType        String    @default("TERM_LOAN") @map("product_type")
+  tenure             Int?
+  tenureUnit         String    @default("MONTH") @map("tenure_unit")
+
+  isDemo          Boolean   @default(false) @map("is_demo")
+  sourceCreatedAt DateTime? @map("source_created_at") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  partner       Partner?           @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+  activities    LeadActivity[]
+  webhookEvents WebhookEvent[]
+  statusOutbox  LeadStatusOutbox[]
+
+  @@index([mobile])
+  @@index([pinCode])
+  @@index([customerId])
+  @@index([createdAt])
+  @@index([status])
+  @@index([source])
+  @@index([partnerId])
+  @@index([loanAmount])
+  @@index([offerAmount])
+  @@index([status, createdAt])
+  @@map("leads")
 }
 
 model Partner {
@@ -48,64 +152,104 @@ model Partner {
   orgName      String        @map("org_name")
   contactEmail String        @map("contact_email")
   status       PartnerStatus @default(invited)
-  createdAt    DateTime      @default(now()) @map("created_at")
-  leads        Lead[]
+  isDemo       Boolean       @default(false) @map("is_demo")
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  leads Lead[]
 
   @@index([contactEmail])
   @@map("partners")
-}
-
-model Lead {
-  id                  String              @id @default(cuid())
-  leadNo              Int                 @unique @default(autoincrement()) @map("lead_no")
-  partnerId           String?             @map("partner_id")
-  source              LeadSource          @default(PARTNER)
-  distributorRefId    String?             @unique @map("distributor_ref_id")
-  name                String
-  mobile              String
-  address             String
-  pinCode             String              @map("pin_code")
-  loanAmount          Decimal?            @map("loan_amount") @db.Decimal(12, 2)
-  dob                 DateTime?
-  goldGrams           Decimal?            @map("gold_grams") @db.Decimal(10, 3)
-  offerAmount         Decimal?            @map("offer_amount") @db.Decimal(12, 2)
-  ltvPercent          Decimal?            @map("ltv_percent") @db.Decimal(5, 2)
-  kfsReference        String?             @map("kfs_reference")
-  acceptanceState     AcceptanceState     @default(NA) @map("acceptance_state")
-  status              LeadStatus          @default(New)
-  duplicateFlag       Boolean             @default(false) @map("duplicate_flag")
-  branchManagerStatus BranchManagerStatus @default(NOT_SENT) @map("branch_manager_status")
-  loanConfirmedAmount Decimal?            @map("loan_confirmed_amount") @db.Decimal(12, 2)
-  loanConfirmedAt     DateTime?           @map("loan_confirmed_at")
-  createdAt           DateTime            @default(now()) @map("created_at")
-  updatedAt           DateTime            @updatedAt @map("updated_at")
-
-  partner    Partner?       @relation(fields: [partnerId], references: [id])
-  activities LeadActivity[]
-
-  @@index([mobile])
-  @@index([pinCode])
-  @@index([loanAmount])
-  @@index([offerAmount])
-  @@index([createdAt])
-  @@index([status])
-  @@index([source])
-  @@index([partnerId])
-  @@map("leads")
 }
 
 model LeadActivity {
   id         String       @id @default(cuid())
   leadId     String       @map("lead_id")
   kind       ActivityKind
-  fromStatus LeadStatus?  @map("from_status")
-  toStatus   LeadStatus?  @map("to_status")
+  /// Text, not an enum — it must be able to hold any canonical status value.
+  fromStatus String?      @map("from_status")
+  toStatus   String?      @map("to_status")
   message    String
+  /// An admin_users email for staff actions, or a "system:<job>" sentinel.
   actor      String?
-  createdAt  DateTime     @default(now()) @map("created_at")
+  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
 
   lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
   @@index([leadId, createdAt])
   @@map("lead_activities")
+}
+
+/// Read-only here. serverx owns delivery; this repo only displays the history.
+model WebhookEvent {
+  id             String    @id @default(uuid())
+  leadId         String    @map("lead_id")
+  statusSent     String    @map("status_sent")
+  payload        String
+  deliveryStatus String    @default("pending") @map("delivery_status")
+  attempts       Int       @default(0)
+  claimedAt      DateTime? @map("claimed_at") @db.Timestamptz(3)
+  lastAttemptAt  DateTime? @map("last_attempt_at") @db.Timestamptz(3)
+  nextRetryAt    DateTime? @map("next_retry_at") @db.Timestamptz(3)
+  responseCode   Int?      @map("response_code")
+  responseBody   String?   @map("response_body")
+  errorMessage   String?   @map("error_message")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([deliveryStatus, nextRetryAt])
+  @@map("webhook_events")
+}
+
+/// This repo INSERTs here, in the same transaction as a status change. serverx
+/// drains it and dispatches the AarthikLabs webhook. Never update or delete a row
+/// from this side.
+model LeadStatusOutbox {
+  seq         BigInt    @id @default(autoincrement())
+  leadId      String    @map("lead_id")
+  status      String
+  actor       String?
+  claimedAt   DateTime? @map("claimed_at") @db.Timestamptz(3)
+  processedAt DateTime? @map("processed_at") @db.Timestamptz(3)
+  attempts    Int       @default(0)
+  lastError   String?   @map("last_error")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([processedAt, seq])
+  @@map("lead_status_outbox")
+}
+
+/// Replay protection for serverx's POST /api/v1/leads. Not used by this repo;
+/// declared so `prisma db pull` does not report it as drift.
+model IdempotencyKey {
+  key         String   @id
+  endpoint    String
+  requestHash String   @map("request_hash")
+  statusCode  Int      @map("status_code")
+  response    String
+  leadId      String?  @map("lead_id")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([createdAt])
+  @@map("idempotency_keys")
+}
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  /// Argon2id hash. Never a plaintext or reversible value.
+  passwordHash String    @map("password_hash")
+  role         String    @default("staff")
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("admin_users")
 }
