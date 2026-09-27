@@ -2,6 +2,7 @@ import {
   EXAMPLE_LEADS,
   EXAMPLE_PARTNERS,
   SOURCE_LABELS,
+  statusLabel,
   type Lead,
   type LeadActivity,
   type LeadPartner,
@@ -52,13 +53,13 @@ export function seedActivities(lead: Lead): Omit<LeadActivity, "id">[] {
       createdAt: lead.createdAt,
     },
   ];
-  if (lead.status !== "New") {
+  if (lead.status !== "LEAD_CREATED") {
     items.push({
       kind: "STATUS_CHANGED",
-      fromStatus: "New",
+      fromStatus: "LEAD_CREATED",
       toStatus: lead.status,
-      message: `Status changed New → ${lead.status}`,
-      actor: null,
+      message: `Status changed ${statusLabel("LEAD_CREATED")} → ${statusLabel(lead.status)}`,
+      actor: "demo@yellowmetal.example",
       createdAt: lead.updatedAt,
     });
   }
@@ -88,7 +89,7 @@ export function demoStore(): DemoStore {
   return (globalForDemo.leaddeskDemo ??= createStore());
 }
 
-export function demoUpdateStatus(id: string, status: LeadStatus): void {
+export function demoUpdateStatus(id: string, status: LeadStatus, actor: string): void {
   const store = demoStore();
   const lead = store.leads.find((l) => l.id === id);
   if (!lead || lead.status === status) return;
@@ -104,8 +105,8 @@ export function demoUpdateStatus(id: string, status: LeadStatus): void {
     kind: "STATUS_CHANGED",
     fromStatus: from,
     toStatus: status,
-    message: `Status changed ${from} → ${status}`,
-    actor: null,
+    message: `Status changed ${statusLabel(from)} → ${statusLabel(status)}`,
+    actor,
     createdAt: now,
   });
   store.activities.set(id, list);
