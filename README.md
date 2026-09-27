@@ -9,7 +9,7 @@ disbursal. Leads arrive from two places — referral partners, and the AarthikLa
 network via the sibling `serverx` service.
 
 > **This repo shares one database with `serverx`, and owns no migrations.**
-> Read [`ARCHITECTURE.md`](ARCHITECTURE.md) before changing anything under `prisma/`.
+> Read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) before changing anything under `prisma/`.
 
 ## Quick start
 
@@ -143,8 +143,8 @@ middleware.ts                 edge auth guard
 
 ## Related
 
-- [`ARCHITECTURE.md`](ARCHITECTURE.md) — how the two repos fit together
-- [`context.md`](context.md) — decisions not to silently redo
-- [`changelog.md`](changelog.md) — what changed and why
-- [`todo.md`](todo.md) — known gaps and open preference calls
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how the two repos fit together
+- [`docs/ENGINEERING_NOTES.md`](docs/ENGINEERING_NOTES.md) — decisions not to silently redo
+- [`CHANGELOG.md`](CHANGELOG.md) — what changed and why
+- [`docs/TODO.md`](docs/TODO.md) — known gaps and open preference calls
 - `../serverx/README.md` — the AarthikLabs-facing service

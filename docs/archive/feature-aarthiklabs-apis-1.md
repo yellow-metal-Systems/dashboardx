@@ -13,7 +13,7 @@ tags: [feature, api, integration, security]
 >
 > This plan assumed the four AarthikLabs APIs would be built as new Next.js routes
 > inside LeadDesk. They were instead built in the `serverx` repo, which now owns
-> them along with the database schema. See `ARCHITECTURE.md` for how the system
+> them along with the database schema. See `docs/ARCHITECTURE.md` for how the system
 > actually fits together.
 >
 > **Landed, though not the way this plan describes:**

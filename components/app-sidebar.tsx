@@ -84,7 +84,7 @@ export function AppSidebar({ staffName, staffEmail }: Props) {
         whose submit button only toggles a banner — it writes nothing anywhere — so
         linking to it from the staff sidebar implied a working partner portal.
         Partner authentication, invitations and real lead submission are a separate
-        piece of work (see context.md).
+        piece of work (see docs/ENGINEERING_NOTES.md).
       */}
       <SidebarFooter>
         <div className="px-2 py-1.5">

@@ -1,6 +1,9 @@
-# Context for whoever (or whatever agent) picks this up next
+# Engineering notes
 
-This is `dashboardx` — Yellow Metal's staff-facing lead management system
+Decisions, constraints and traps that are not obvious from reading the code. Read
+alongside `../README.md` and `ARCHITECTURE.md`.
+
+`dashboardx` is Yellow Metal's staff-facing lead management system
 (LeadDesk). Next.js 14 App Router, Prisma, PostgreSQL on Supabase.
 
 Its sibling is `serverx` — the Express service that serves the four
@@ -10,7 +13,7 @@ and so does the Production Build Plan's requirement that the APIs and the dashbo
 be "two faces of the same backend, reading and writing the same database... no
 separate sync step."
 
-Start with `ARCHITECTURE.md`. It replaced `API_DOCUMENTATION.md`, which described
+Start with `docs/ARCHITECTURE.md`. It replaced `API_DOCUMENTATION.md`, which described
 four `/api/v1/*` routes and a webhook dispatcher inside *this* app that were never
 built here.
 
@@ -99,7 +102,7 @@ tables this repo does not own.
 
 ## Open questions
 
-See `serverx/QUESTIONS.md`. The live one: whether lead expiry should notify
+See `serverx/docs/AARTHIKLABS_DECISIONS.md`. The live one: whether lead expiry should notify
 AarthikLabs — currently it deliberately does not.
 
 ## Still not built (and the spec asks for it)

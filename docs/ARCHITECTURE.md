@@ -321,8 +321,8 @@ Real, and deliberately not addressed in this pass:
 
 ## Related
 
-- `context.md` — decisions not to silently redo
-- `changelog.md` — what changed and why
+- `docs/ENGINEERING_NOTES.md` — decisions not to silently redo
+- `CHANGELOG.md` — what changed and why
 - `../serverx/README.md` — the partner-facing service
 - `../serverx/docs/` — the AarthikLabs handover pack
-- `plan/feature-aarthiklabs-apis-1.md` — **superseded**; see its header
+- `docs/archive/feature-aarthiklabs-apis-1.md` — **superseded**; see its header

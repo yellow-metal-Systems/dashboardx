@@ -3,7 +3,7 @@
 Rewritten 2026-09-27. The previous version pointed at `todobackend.md` "in the
 `yellow_metal_ondc` repo", which no longer exists, and listed several items that have
 since shipped. Backend items now live in `serverx`'s own `README.md` checklist and
-`QUESTIONS.md`.
+`docs/AARTHIKLABS_DECISIONS.md`.
 
 Nothing below is broken. These are gaps and unmade decisions.
 
@@ -72,4 +72,4 @@ stat-card alignment fixes, the 13-place `CardContent` padding regression, loadin
 skeletons, removal of the replaying count-up animations that caused the reported "lag",
 staff authentication, the disbursement capture form, both LTV figures on the lead page,
 webhook delivery history, and the shared-database unification that deleted the manual
-sync script. See `changelog.md`.
+sync script. See `CHANGELOG.md`.

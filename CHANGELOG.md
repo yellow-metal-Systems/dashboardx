@@ -1,7 +1,7 @@
 # Changelog
 
 Scoped to this repo (`dashboardx` / LeadDesk) only. The AarthikLabs-facing service's
-history lives in the `serverx` repo's own `changelog.md`.
+history lives in the `serverx` repo's own `CHANGELOG.md`.
 
 ## 2026-09-27 — one database, one table, real auth
 
@@ -44,7 +44,7 @@ four synthetic rows were backed up to JSON before the schema was rebuilt.
 **text** and shared with `serverx`.
 
 This lands the `Converted → Disbursed` rename plus `BranchVisitScheduled` that
-`plan/feature-aarthiklabs-apis-1.md` had been blocking on as DEP-003 since 19 Sep, and
+`docs/archive/feature-aarthiklabs-apis-1.md` had been blocking on as DEP-003 since 19 Sep, and
 it deletes the translation layer whose `STATUS_MAP` / `TERMINAL_BACKEND_STATUSES` guard
 existed because an earlier version silently reverted every staff-set `Contacted` lead
 to `New` on each sync run. With one vocabulary there is nothing left to translate.
@@ -157,15 +157,15 @@ production configuration.
 
 ### Documentation
 
-- `API_DOCUMENTATION.md` **deleted**, replaced by `ARCHITECTURE.md`. The old one was
+- `API_DOCUMENTATION.md` **deleted**, replaced by `docs/ARCHITECTURE.md`. The old one was
   778 lines dated 24 Sep documenting four Next.js-native `/api/v1/*` routes, an in-app
   webhook dispatcher and HMAC signing that never existed in this repo; it carried 17
   absolute `file:///c:/Users/athar/...` links under two different roots, quoted the
   pre-fix broken version of the sync script, and left "which backend is real?" as an
   open `[!CAUTION]` question the org split had already answered.
-- `plan/feature-aarthiklabs-apis-1.md` marked **Superseded**, with a header recording
+- `docs/archive/feature-aarthiklabs-apis-1.md` marked **Superseded**, with a header recording
   what landed, what was dropped and what is still open.
-- `context.md` rewritten.
+- `docs/ENGINEERING_NOTES.md` rewritten.
 
 ### Deleted
 
