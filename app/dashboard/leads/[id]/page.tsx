@@ -16,8 +16,10 @@ import {
   formatDateTime,
   formatInr,
   leadRef,
+  statusLabel,
 } from "@/lib/leads";
 import { getLeadDetail } from "@/lib/leads-repo";
+import { fetchGoldInsights } from "@/lib/server-bridge";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +48,12 @@ const timeFormatter = new Intl.DateTimeFormat("en-IN", {
 export default async function LeadPage({ params }: { params: { id: string } }) {
   const detail = await getLeadDetail(params.id);
   if (!detail) notFound();
-  const { lead, activities, duplicates } = detail;
+  const { lead, activities, duplicates, webhookEvents } = detail;
+
+  // Computed by the AarthikLabs-facing service, which owns the live gold-rate
+  // lookup. Null when that service or the rate API is unreachable: the page still
+  // renders and says the figures are unavailable rather than showing a wrong number.
+  const gold = lead.goldGrams !== null ? await fetchGoldInsights(lead.id) : null;
 
   const ref = leadRef(lead);
   const isAarthik = lead.source === "AARTHIKLABS";
@@ -132,6 +139,21 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
                     {ACCEPTANCE_LABELS[lead.acceptanceState]}
                   </Field>
                 )}
+                {lead.disbursementAmount !== null && (
+                  <Field label="Disbursed">
+                    <span className="text-lg font-semibold">
+                      {formatInr(lead.disbursementAmount)}
+                    </span>
+                  </Field>
+                )}
+                {lead.disbursementDate && (
+                  <Field label="Disbursed on">{formatDate(lead.disbursementDate)}</Field>
+                )}
+                {lead.loanId && (
+                  <Field label="Loan ID">
+                    <span className="font-mono text-xs">{lead.loanId}</span>
+                  </Field>
+                )}
                 {lead.kfsReference && (
                   <Field label="Key Fact Statement">
                     {kfsIsUrl ? (
@@ -149,6 +171,50 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
                   </Field>
                 )}
               </dl>
+
+              {lead.goldGrams !== null && (
+                <div className="mt-2 rounded-lg border border-outline-variant bg-surface-container-low p-4">
+                  <p className="text-label-sm uppercase tracking-widest text-label">
+                    Maximum eligible loan
+                  </p>
+                  {gold &&
+                  (gold.maxEligibleBullet68 !== null || gold.maxEligibleMonthly75 !== null) ? (
+                    <>
+                      <dl className="mt-3 grid gap-4 sm:grid-cols-2">
+                        {gold.maxEligibleBullet68 !== null && (
+                          <Field label="Bullet plan, 68% LTV">
+                            <span className="text-lg font-semibold">
+                              {formatInr(gold.maxEligibleBullet68)}
+                            </span>
+                          </Field>
+                        )}
+                        {gold.maxEligibleMonthly75 !== null && (
+                          <Field label="Monthly plan, 75% LTV">
+                            <span className="text-lg font-semibold">
+                              {formatInr(gold.maxEligibleMonthly75)}
+                            </span>
+                          </Field>
+                        )}
+                      </dl>
+                      <p className="mt-3 text-xs text-on-surface-variant">
+                        On {lead.goldGrams} g
+                        {gold.rateUsed !== null
+                          ? ` at ${formatInr(gold.rateUsed)}/g (22K)`
+                          : " at the 22K rate"}
+                        {gold.rateSource === "fallback"
+                          ? " — fallback rate, live rate unavailable."
+                          : "."}{" "}
+                        Both plans are shown because the branch manager selects the
+                        plan in person, after assessing the actual gold.
+                      </p>
+                    </>
+                  ) : (
+                    <p className="mt-2 text-sm text-on-surface-variant">
+                      Unavailable — could not reach the rate service. Reload to try again.
+                    </p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -263,6 +329,50 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
                   Pushed by AarthikLabs on behalf of an ONDC buyer app; no partner
                   organization is involved.
                 </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {webhookEvents.length > 0 && (
+            <Card>
+              <CardContent className="flex flex-col gap-3 pt-6 md:pt-9">
+                <SectionTitle>AarthikLabs updates</SectionTitle>
+                <ul className="flex flex-col gap-3">
+                  {webhookEvents.map((event) => {
+                    const failed = event.deliveryStatus === "failed";
+                    const delivered = event.deliveryStatus === "delivered";
+                    return (
+                      <li key={event.id} className="flex flex-col gap-0.5">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="text-sm font-semibold text-on-surface">
+                            {statusLabel(event.statusSent)}
+                          </span>
+                          <Badge
+                            className={cn(
+                              "border-transparent text-[10px] uppercase tracking-wider hover:bg-inherit",
+                              delivered
+                                ? "bg-success-solid font-bold text-white"
+                                : failed
+                                  ? "bg-error-solid font-bold text-white"
+                                  : "bg-secondary-container font-extrabold text-on-secondary-container"
+                            )}
+                          >
+                            {delivered ? "Delivered" : failed ? "Failed" : "Sending"}
+                          </Badge>
+                        </div>
+                        <span className="text-xs text-on-surface-variant">
+                          {formatDateTime(event.createdAt)}
+                          {event.attempts > 1 && ` · ${event.attempts} attempts`}
+                        </span>
+                        {failed && event.errorMessage && (
+                          <span className="text-xs text-error">
+                            {event.errorMessage} — needs manual follow-up
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
               </CardContent>
             </Card>
           )}

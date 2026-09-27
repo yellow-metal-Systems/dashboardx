@@ -24,22 +24,24 @@ import {
   BRANCH_MANAGER_BADGE_CLASSES,
   BRANCH_MANAGER_LABELS,
   LEAD_STATUSES,
+  isTerminalStatus,
+  parseLeadStatus,
+  statusBadgeClass,
+  statusLabel,
   SOURCE_LABELS,
-  STATUS_BADGE_CLASSES,
   duplicatesOf,
   formatDate,
   formatDateTime,
   formatInr,
   leadRef,
   type Lead,
-  type LeadStatus,
 } from "@/lib/leads";
 
 type Props = {
   lead: Lead | null;
   allLeads: Lead[];
   onOpenChange: (open: boolean) => void;
-  onStatusChange: (id: string, status: LeadStatus) => void;
+  onStatusChange: (id: string, status: string) => void;
   onSelectLead: (id: string) => void;
 };
 
@@ -194,7 +196,7 @@ export function LeadDetailSheet({
                           <Badge
                             className={cn(
                               "shrink-0 border-transparent hover:bg-inherit",
-                              STATUS_BADGE_CLASSES[d.status]
+                              statusBadgeClass(d.status)
                             )}
                           >
                             {d.status}
@@ -230,21 +232,25 @@ export function LeadDetailSheet({
               <Row label="Lead status">
                 <Select
                   value={lead.status}
-                  onValueChange={(v) => onStatusChange(lead.id, v as LeadStatus)}
+                  onValueChange={(v) => onStatusChange(lead.id, v)}
+                  disabled={
+                    parseLeadStatus(lead.status) !== null &&
+                    isTerminalStatus(parseLeadStatus(lead.status)!)
+                  }
                 >
                   <SelectTrigger
                     aria-label={`Status for ${lead.name}`}
                     className={cn(
-                      "h-8 w-36 border-transparent",
-                      STATUS_BADGE_CLASSES[lead.status]
+                      "h-8 w-40 border-transparent",
+                      statusBadgeClass(lead.status)
                     )}
                   >
-                    <SelectValue />
+                    <SelectValue>{statusLabel(lead.status)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {LEAD_STATUSES.map((s) => (
                       <SelectItem key={s} value={s}>
-                        {s}
+                        {statusLabel(s)}
                       </SelectItem>
                     ))}
                   </SelectContent>
