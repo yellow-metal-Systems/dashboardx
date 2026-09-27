@@ -1,36 +1,150 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# dashboardx — Yellow Metal LeadDesk
 
-## Getting Started
+The staff-facing lead management UI. Next.js 14 (App Router), Prisma, PostgreSQL on
+Supabase.
 
-First, run the development server:
+Branch staff use this to work incoming gold-loan leads: view and filter them, see
+duplicates and activity history, move a lead through its statuses, and record a
+disbursal. Leads arrive from two places — referral partners, and the AarthikLabs/ONDC
+network via the sibling `serverx` service.
+
+> **This repo shares one database with `serverx`, and owns no migrations.**
+> Read [`ARCHITECTURE.md`](ARCHITECTURE.md) before changing anything under `prisma/`.
+
+## Quick start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env          # then fill it in — the notes in that file matter
+npx prisma generate
+npm run db:seed               # example leads + your staff login (see below)
+npm run dev                   # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The tables must already exist. They are created by `serverx`, not here:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+cd ../serverx && npx prisma migrate deploy
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Your first login
 
-## Learn More
+There is no default account, on purpose:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+SEED_ADMIN_PASSWORD='a-long-passphrase' npm run db:seed -- --admin-only
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Defaults to `admin@yellowmetal.example`; override with `SEED_ADMIN_EMAIL`. Minimum 12
+characters.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Without a database
 
-## Deploy on Vercel
+```bash
+LEADDESK_DEMO=1 npm run dev
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Serves eight example leads from memory. **Development only** — `lib/env.ts` refuses to
+start if demo mode is on in production, because staff seeing fake customer records that
+look real is worse than an error page.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Scripts
+
+| Script | Does |
+|---|---|
+| `npm run dev` / `build` / `start` | The usual Next.js trio |
+| `npm test` | Vitest — 44 tests, no database needed |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run lint` | `next lint` |
+| `npm run db:seed` | Example leads (all flagged `isDemo`) + staff account |
+| `npm run db:pull` | Re-generate the Prisma client from the live schema after `serverx` ships a migration |
+| `npm run db:drift` | Exit 2 if this datamodel is behind the database |
+
+There is deliberately **no `db:migrate`**. See below.
+
+## Schema ownership
+
+`serverx/prisma/schema.prisma` is the single source of truth for every shared table.
+This repo's `prisma/schema.prisma` is a client-generation artefact, and
+`prisma/migrations/` does not exist.
+
+After `serverx` ships a migration:
+
+```bash
+npm run db:pull
+```
+
+Then re-apply by hand the camelCase `@map` conventions `db pull` flattens — the header
+of `prisma/schema.prisma` lists exactly what to restore and why. `npm run db:drift`
+tells you whether you are behind.
+
+**Never run `prisma migrate` or `prisma db push` here.** Either would try to reshape
+tables this repo does not own, and would drop the columns `serverx` writes.
+
+## How it connects
+
+| Reads/writes | How |
+|---|---|
+| Lead data | Prisma, directly against the shared `leads` table. No sync step. |
+| Staff status changes | Written locally with an audit row **and** a `lead_status_outbox` row, in one transaction. `serverx` drains the outbox and sends the AarthikLabs webhook. |
+| Max eligible loan (68% / 75% LTV) | `GET serverx:/api/internal/leads/:id` — `serverx` owns the live gold-rate lookup. Degrades to "unavailable". |
+| Integration health banner | `GET serverx:/api/internal/integration-health` |
+
+Needs `SERVER_BASE_URL` and an `INTERNAL_API_KEY` matching `serverx`'s. Without them the
+two read-only figures simply don't render; nothing else breaks.
+
+## Authentication
+
+Staff-only. `iron-session` cookie `ym_admin_session`, scrypt password hashing,
+`admin_users` table.
+
+Guarded in three places, and the third is the one that matters:
+
+1. `middleware.ts` — `/dashboard/*` at the edge, no database query.
+2. `app/dashboard/layout.tsx` — `requireStaff()`.
+3. **`app/dashboard/actions.ts` — `requireStaffOrThrow()`.** A server action is a
+   directly invokable POST endpoint, so a middleware- or layout-only guard protects the
+   page render and leaves the mutation open.
+
+## Layout
+
+```
+app/
+  login/                      staff sign-in
+  dashboard/
+    page.tsx                  lead list
+    leads/[id]/page.tsx       detail: LTV figures, timeline, webhook history
+    overview/  partners/      stats, partner list (read-only)
+    actions.ts                the only server action — auth-guarded
+  partner/page.tsx            STATIC MOCK. Submits nowhere. Unlinked from the sidebar.
+components/
+  leads/                      table, filters, detail sheet, status control, disbursement dialog
+  auth/  ui/                  login form; shadcn-style primitives
+hooks/use-live-refresh.ts     polls so partner-API leads appear without a reload
+lib/
+  env.ts                      fail-fast configuration
+  leads.ts                    types, canonical statuses, labels, formatters
+  leads-repo.ts               all database access
+  server-bridge.ts            the two read-only calls to serverx
+  auth/                       password, session, sign-in/out
+middleware.ts                 edge auth guard
+```
+
+## Environment
+
+`.env.example` is the reference. Two things catch people out:
+
+- **Do not use the `db.<project-ref>.supabase.co` hostname in a deployed environment.**
+  It has no A record — IPv6 only — and Vercel Lambdas have no IPv6 egress. Use the
+  pooler hostnames.
+- **`DATABASE_URL` must be the transaction pooler (`:6543`) with `pgbouncer=true`.**
+  Without that flag you get intermittent `prepared statement "s0" already exists` under
+  load. `DIRECT_URL` is the session pooler, used by `db pull`.
+
+## Related
+
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — how the two repos fit together
+- [`context.md`](context.md) — decisions not to silently redo
+- [`changelog.md`](changelog.md) — what changed and why
+- [`todo.md`](todo.md) — known gaps and open preference calls
+- `../serverx/README.md` — the AarthikLabs-facing service

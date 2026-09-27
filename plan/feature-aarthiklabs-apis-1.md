@@ -2,11 +2,58 @@
 goal: Build the three AarthikLabs integration APIs (Dedupe, Lead Push, Status Webhook) for LeadDesk Phase 2
 version: 1.0
 date_created: 2026-09-19
-last_updated: 2026-09-19
+last_updated: 2026-09-27
 owner: Atharva Tayade, Ayushman Singh
-status: 'Planned'
+status: 'Superseded'
 tags: [feature, api, integration, security]
 ---
+
+> [!IMPORTANT]
+> **SUPERSEDED — 2026-09-27. Kept as the record of what was planned, not as work to do.**
+>
+> This plan assumed the four AarthikLabs APIs would be built as new Next.js routes
+> inside LeadDesk. They were instead built in the `serverx` repo, which now owns
+> them along with the database schema. See `ARCHITECTURE.md` for how the system
+> actually fits together.
+>
+> **Landed, though not the way this plan describes:**
+> - Phase 1 TASK-002/003, the status-vocabulary decision (DEP-003) — resolved. One
+>   canonical vocabulary, shared with `serverx`, stored as text:
+>   `LEAD_CREATED CONTACTED BRANCH_VISIT_SCHEDULED DISBURSED REJECTED`. This is the
+>   `Converted → Disbursed` rename plus `BranchVisitScheduled` that TASK-002 was
+>   blocking on; `CONTACTED` and `BRANCH_VISIT_SCHEDULED` are sanctioned by
+>   AarthikLabs' own "any other intermediary status available with you".
+> - Phase 2, shared inbound API auth — in `serverx`, with separate partner and
+>   internal keys.
+> - Phases 3-5, the Dedupe / Lead Creation / Nearest Branch / Lead Status contracts
+>   and the outbound status webhook — in `serverx`, HMAC-signed, with durable
+>   retries.
+> - Phase 6, staff dashboard authentication (SEC-003) — built here. `iron-session`
+>   cookie `ym_admin_session`, an `admin_users` table, `middleware.ts`, and a guard
+>   inside the server action itself. It is at `/login` rather than `/admin/login`,
+>   and uses `middleware.ts` rather than a `(protected)` route group; the guard on
+>   the action is the addition this plan did not specify, and is the one that
+>   actually protects the mutation.
+> - Phase 7, integration testing — 139 tests in `serverx` (49 needing a database)
+>   and 40 in this repo.
+>
+> **Dropped:**
+> - Building the four APIs as LeadDesk-native routes (§Phases 3-5 as written). They
+>   exist in `serverx`; duplicating them was the overlap the old
+>   `API_DOCUMENTATION.md` flagged and never resolved.
+> - ALT-001's rejection of "a separate Express/Fastify microservice" — that is the
+>   architecture, and it predates this plan.
+> - Phase 1 TASK-001's seven remaining new columns (`consentRefId`,
+>   `interestRatePct`, `tenureMonths`, `offerId`, `officerName`, `officerContact`,
+>   `statusReason`). None were needed by the real contract. `distributorRefId` was
+>   removed entirely: it existed only to hold `serverx`'s lead id across the
+>   two-database bridge, and with one shared table the primary key *is* that value.
+>
+> **Still open:**
+> - The partner portal the v1 platform spec requires: `PartnerUser`, `Invite`,
+>   invitation tokens, self-signup, real submission from `/partner`, and the two
+>   transactional emails. Not in this plan's scope either.
+
 
 # Introduction
 
