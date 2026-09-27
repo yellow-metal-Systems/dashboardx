@@ -20,6 +20,7 @@ import {
   BRANCH_MANAGER_STATUSES,
   LEAD_SOURCES,
   LEAD_STATUSES,
+  statusLabel,
   SOURCE_LABELS,
   type LeadPartner,
 } from "@/lib/leads";
@@ -115,7 +116,7 @@ export function LeadFilters({ filters, onChange, partners }: Props) {
               <SelectItem value="all">All statuses</SelectItem>
               {LEAD_STATUSES.map((s) => (
                 <SelectItem key={s} value={s}>
-                  {s}
+                  {statusLabel(s)}
                 </SelectItem>
               ))}
             </SelectContent>
