@@ -3,16 +3,17 @@ import { TrendingDown, TrendingUp } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import { LEAD_STATUSES, type LeadStatus } from "@/lib/leads";
+import { LEAD_STATUSES, statusLabel, type LeadStatus } from "@/lib/leads";
 import { getOverviewStats } from "@/lib/leads-repo";
 
 export const dynamic = "force-dynamic";
 
 const STATUS_BAR_CLASSES: Record<LeadStatus, string> = {
-  New: "bg-grey-solid",
-  Contacted: "bg-grey-solid",
-  Converted: "bg-success-solid",
-  Rejected: "bg-error-solid",
+  LEAD_CREATED: "bg-grey-solid",
+  CONTACTED: "bg-grey-solid",
+  BRANCH_VISIT_SCHEDULED: "bg-grey-solid",
+  DISBURSED: "bg-success-solid",
+  REJECTED: "bg-error-solid",
 };
 
 function pct(part: number, whole: number): number {
@@ -96,10 +97,10 @@ export default async function OverviewPage() {
           note={`${s.duplicates} of ${s.totalLeads} leads`}
         />
         <StatTile
-          label="Conversion rate"
-          value={pct(s.converted, s.totalLeads)}
+          label="Disbursal rate"
+          value={pct(s.disbursed, s.totalLeads)}
           suffix="%"
-          note={`${s.converted} converted`}
+          note={`${s.disbursed} disbursed`}
         />
       </div>
 
@@ -114,7 +115,7 @@ export default async function OverviewPage() {
                 return (
                   <li key={status} className="flex flex-col gap-1.5">
                     <div className="flex items-baseline justify-between text-sm">
-                      <span className="text-on-surface">{status}</span>
+                      <span className="text-on-surface">{statusLabel(status)}</span>
                       <span className="text-on-surface-variant">
                         <span className="tabular-nums">{count}</span>
                         <span className="sr-only"> leads, {share}% of total</span>
@@ -133,6 +134,16 @@ export default async function OverviewPage() {
                 );
               })}
             </ul>
+            {s.unknownStatuses.length > 0 && (
+              <p className="text-xs text-on-surface-variant">
+                Also present:{" "}
+                {s.unknownStatuses
+                  .map((u) => `${statusLabel(u.status)} (${u.count})`)
+                  .join(", ")}
+                . These statuses were set by the AarthikLabs-facing service and are
+                not yet known to this dashboard.
+              </p>
+            )}
           </CardContent>
         </Card>
 

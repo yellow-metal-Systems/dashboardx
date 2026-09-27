@@ -2,19 +2,32 @@
   "name": "leaddesk",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:up": "docker compose up -d",
-    "db:migrate": "prisma migrate dev",
-    "db:seed": "prisma db seed",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:pull": "prisma db pull && prisma generate",
+    "db:create-admin": "tsx prisma/create-admin.ts",
+    "db:drift": "prisma migrate diff --from-schema-datamodel prisma/schema.prisma --to-schema-datasource prisma/schema.prisma --exit-code",
     "postinstall": "prisma generate"
   },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
-  },
+  "//": [
+    "`db:migrate` was REMOVED. The tables this app reads and writes are shared with",
+    "the serverx repo, which owns every migration. Running prisma migrate or db push",
+    "here would try to reshape tables it does not own, and prisma/migrations/ was",
+    "deleted for the same reason (its one migration did not even match this schema).",
+    "After serverx ships a migration run `npm run db:pull`, then re-apply the",
+    "camelCase @map conventions db pull flattens — see the header of",
+    "prisma/schema.prisma. `npm run db:drift` reports whether this datamodel is",
+    "behind the live database."
+  ],
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "@radix-ui/react-dialog": "^1.1.23",
@@ -25,11 +38,13 @@
     "@radix-ui/react-tooltip": "^1.2.16",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "iron-session": "^8.0.4",
     "lucide-react": "^1.46.0",
     "next": "14.2.35",
     "react": "^18",
     "react-dom": "^18",
-    "tailwind-merge": "^3.7.0"
+    "tailwind-merge": "^3.7.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^20",
@@ -42,6 +57,7 @@
     "tailwindcss": "^3.4.1",
     "tailwindcss-animate": "^1.0.7",
     "tsx": "^4.23.13",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^2.1.8"
   }
 }

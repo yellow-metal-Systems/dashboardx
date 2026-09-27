@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { RefreshCw, Search } from "lucide-react";
 
 import { updateLeadStatus } from "@/app/dashboard/actions";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -25,11 +25,18 @@ import {
 } from "@/components/ui/table";
 import { LeadFilters } from "@/components/leads/lead-filters";
 import { LeadDetailSheet } from "@/components/leads/lead-detail-sheet";
+import {
+  DisbursementDialog,
+  type DisbursementInput,
+} from "@/components/leads/disbursement-dialog";
 import { cn } from "@/lib/utils";
 import {
   LEAD_STATUSES,
   SOURCE_LABELS,
-  STATUS_BADGE_CLASSES,
+  isTerminalStatus,
+  parseLeadStatus,
+  statusBadgeClass,
+  statusLabel,
   formatDate,
   formatInr,
   leadRef,
@@ -37,6 +44,7 @@ import {
   type LeadPartner,
   type LeadStatus,
 } from "@/lib/leads";
+import { formatAge, useLiveRefresh } from "@/hooks/use-live-refresh";
 import {
   EMPTY_FILTERS,
   applyLeadFilters,
@@ -53,26 +61,109 @@ export function LeadsDashboard({ initialLeads, partners }: Props) {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [disbursingId, setDisbursingId] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
 
-  function updateStatus(id: string, status: LeadStatus) {
-    const previous = leads;
+  // Mirrored into a ref so the snapshot-absorbing effect below can read the
+  // current value without listing it as a dependency (which would make the effect
+  // re-run on every mutation and fight the optimistic update).
+  const pendingRef = useRef<string | null>(null);
+  pendingRef.current = pendingId;
+
+  // Leads also arrive from AarthikLabs posting to the partner API, and nothing
+  // tells this browser about those. Poll while the tab is visible, and pause
+  // while a status change is in flight.
+  const { lastRefreshedAt, isRefreshing, refreshNow } = useLiveRefresh({
+    enabled: pendingId === null,
+  });
+
+  // Drives the "updated 40s ago" label. Purely cosmetic, so a slow tick is fine.
+  const [clock, setClock] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setClock(new Date()), 10_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  // Absorb a newer server snapshot.
+  //
+  // THIS is what made a refresh necessary before: useState(initialLeads) captures
+  // that array once on mount, so a re-rendered server component handed down new
+  // props and the table kept showing the old list. Only a full page load rebuilt
+  // the component and picked them up.
+  //
+  // The row currently being mutated is preserved, so a server render that lands
+  // mid-flight cannot briefly flash the old status back.
+  useEffect(() => {
+    setLeads((prev) => {
+      const pending = pendingRef.current;
+      if (pending === null) return initialLeads;
+      return initialLeads.map((lead) =>
+        lead.id === pending ? (prev.find((p) => p.id === lead.id) ?? lead) : lead
+      );
+    });
+  }, [initialLeads]);
+
+  // Optimistic, but scoped to the one row. The previous version snapshotted the
+  // ENTIRE leads array and restored it on failure, so a failed change also
+  // discarded any concurrent edit to a different lead.
+  function applyOptimistic(id: string, status: LeadStatus) {
     const updatedAt = new Date().toISOString();
-    setSaveError(null);
     setLeads((prev) =>
       prev.map((lead) => (lead.id === id ? { ...lead, status, updatedAt } : lead))
     );
-    updateLeadStatus(id, status).catch(() => {
-      setLeads(previous);
-      setSaveError("Could not save the status change. Please try again.");
+  }
+
+  function revertOne(id: string, status: string, updatedAt: string) {
+    setLeads((prev) =>
+      prev.map((lead) => (lead.id === id ? { ...lead, status, updatedAt } : lead))
+    );
+  }
+
+  function commitStatus(id: string, status: LeadStatus, disbursement?: DisbursementInput) {
+    const lead = leads.find((l) => l.id === id);
+    if (!lead) return;
+    const previousStatus = lead.status;
+    const previousUpdatedAt = lead.updatedAt;
+
+    setSaveError(null);
+    setPendingId(id);
+    applyOptimistic(id, status);
+
+    startTransition(async () => {
+      try {
+        const result = await updateLeadStatus(id, status, disbursement);
+        if (!result.ok) {
+          revertOne(id, previousStatus, previousUpdatedAt);
+          setSaveError(result.error);
+        }
+      } catch {
+        revertOne(id, previousStatus, previousUpdatedAt);
+        setSaveError("Could not save the status change. Please try again.");
+      } finally {
+        setPendingId(null);
+      }
     });
+  }
+
+  function updateStatus(id: string, next: string) {
+    const status = parseLeadStatus(next);
+    if (!status) return;
+    // DISBURSED carries money figures into the AarthikLabs webhook, so collect
+    // them instead of sending nulls.
+    if (status === "DISBURSED") {
+      setDisbursingId(id);
+      return;
+    }
+    commitStatus(id, status);
   }
 
   const stats = useMemo(
     () => ({
       total: leads.length,
-      new: leads.filter((l) => l.status === "New").length,
+      new: leads.filter((l) => l.status === "LEAD_CREATED").length,
       duplicates: leads.filter((l) => l.duplicateFlag).length,
-      converted: leads.filter((l) => l.status === "Converted").length,
+      disbursed: leads.filter((l) => l.status === "DISBURSED").length,
     }),
     [leads]
   );
@@ -96,8 +187,23 @@ export function LeadsDashboard({ initialLeads, partners }: Props) {
             Internal
           </p>
           <h1 className="mt-1 text-heading-lg text-on-surface">Leads</h1>
-          <p className="mt-1 text-sm text-on-surface-variant">
-            {leads.length} total · {filteredLeads.length} shown
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-on-surface-variant">
+            <span>
+              {leads.length} total · {filteredLeads.length} shown
+            </span>
+            <span aria-hidden="true">·</span>
+            <span>updated {formatAge(lastRefreshedAt, clock)}</span>
+            <button
+              type="button"
+              onClick={refreshNow}
+              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-sm font-medium text-on-surface-variant underline-offset-2 hover:text-on-surface hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            >
+              <RefreshCw
+                aria-hidden="true"
+                className={cn("h-3.5 w-3.5", isRefreshing && "motion-safe:animate-spin")}
+              />
+              Refresh
+            </button>
           </p>
         </div>
         <div className="relative md:w-72">
@@ -121,7 +227,7 @@ export function LeadsDashboard({ initialLeads, partners }: Props) {
           ["Total leads", stats.total],
           ["New", stats.new],
           ["Flagged duplicates", stats.duplicates],
-          ["Converted", stats.converted],
+          ["Disbursed", stats.disbursed],
         ].map(([label, value]) => (
           <Card key={label}>
             <CardHeader className="p-4 pb-2 md:p-6 md:pb-2">
@@ -226,23 +332,26 @@ export function LeadsDashboard({ initialLeads, partners }: Props) {
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Select
                           value={lead.status}
-                          onValueChange={(value) =>
-                            updateStatus(lead.id, value as LeadStatus)
+                          onValueChange={(value) => updateStatus(lead.id, value)}
+                          disabled={
+                            pendingId === lead.id ||
+                            (parseLeadStatus(lead.status) !== null &&
+                              isTerminalStatus(parseLeadStatus(lead.status)!))
                           }
                         >
                           <SelectTrigger
                             aria-label={`Status for ${lead.name}`}
                             className={cn(
-                              "h-8 w-36 border-transparent",
-                              STATUS_BADGE_CLASSES[lead.status]
+                              "h-8 w-40 border-transparent",
+                              statusBadgeClass(lead.status)
                             )}
                           >
-                            <SelectValue />
+                            <SelectValue>{statusLabel(lead.status)}</SelectValue>
                           </SelectTrigger>
                           <SelectContent>
                             {LEAD_STATUSES.map((status) => (
                               <SelectItem key={status} value={status}>
-                                {status}
+                                {statusLabel(status)}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -277,6 +386,17 @@ export function LeadsDashboard({ initialLeads, partners }: Props) {
         }}
         onStatusChange={updateStatus}
         onSelectLead={setSelectedId}
+      />
+
+      <DisbursementDialog
+        open={disbursingId !== null}
+        leadName={leads.find((l) => l.id === disbursingId)?.name ?? "this lead"}
+        onCancel={() => setDisbursingId(null)}
+        onConfirm={(details) => {
+          const id = disbursingId;
+          setDisbursingId(null);
+          if (id) commitStatus(id, "DISBURSED", details);
+        }}
       />
     </div>
   );

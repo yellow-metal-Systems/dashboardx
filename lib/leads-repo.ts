@@ -2,32 +2,33 @@ import type {
   Lead as LeadRow,
   LeadActivity as ActivityRow,
   Partner as PartnerRow,
+  WebhookEvent as WebhookEventRow,
 } from "@prisma/client";
 
 import { prisma } from "./prisma";
 import {
   LEAD_STATUSES,
-  duplicatesOf,
+  isTerminalStatus,
+  joinAddress,
+  parseLeadStatus,
+  statusLabel,
   type Lead,
   type LeadActivity,
   type LeadPartner,
   type LeadStatus,
+  type LeadWebhookEvent,
   type PartnerSummary,
 } from "./leads";
-import { demoPartnerSummaries, demoStore, demoUpdateStatus, PARTNER_SEEDS } from "./demo-store";
-import { workingDaysSince } from "./working-days";
-
-// Demo mode serves in-memory example data with no database — used explicitly
-// via LEADDESK_DEMO=1, or automatically whenever DATABASE_URL isn't set (e.g.
-// a frontend-only deploy that hasn't been wired to Postgres yet).
-export function isDemoMode(): boolean {
-  return process.env.LEADDESK_DEMO?.trim() === "1" || !process.env.DATABASE_URL?.trim();
-}
 
 type LeadWithPartner = LeadRow & { partner: PartnerRow | null };
 
 function num(value: { toNumber(): number } | null): number | null {
   return value === null ? null : value.toNumber();
+}
+
+/** A DATE column has no time or zone — keep it as YYYY-MM-DD, not an ISO instant. */
+function dateOnly(value: Date | null): string | null {
+  return value ? value.toISOString().slice(0, 10) : null;
 }
 
 function toPartner(row: PartnerRow): LeadPartner {
@@ -38,24 +39,38 @@ export function toLead(row: LeadWithPartner): Lead {
   return {
     id: row.id,
     leadNo: row.leadNo,
+    customerId: row.customerId,
+    loanId: row.loanId,
     source: row.source,
     partner: row.partner ? toPartner(row.partner) : null,
     name: row.name,
     mobile: row.mobile,
-    address: row.address,
+    // There is no single `address` column: the structured pair is what
+    // AarthikLabs sends and is strictly more information, so the UI joins them.
+    address: joinAddress(row.addressLine1, row.addressLine2),
+    addressLine1: row.addressLine1,
+    addressLine2: row.addressLine2,
     pinCode: row.pinCode,
     loanAmount: num(row.loanAmount),
-    dob: row.dob?.toISOString() ?? null,
+    dob: dateOnly(row.dob),
     goldGrams: num(row.goldGrams),
     offerAmount: num(row.offerAmount),
     ltvPercent: num(row.ltvPercent),
     kfsReference: row.kfsReference,
+    offerAcceptedAt: row.offerAcceptedAt?.toISOString() ?? null,
     acceptanceState: row.acceptanceState,
     status: row.status,
     duplicateFlag: row.duplicateFlag,
     branchManagerStatus: row.branchManagerStatus,
     loanConfirmedAmount: num(row.loanConfirmedAmount),
     loanConfirmedAt: row.loanConfirmedAt?.toISOString() ?? null,
+    disbursementAmount: num(row.disbursementAmount),
+    disbursementDate: dateOnly(row.disbursementDate),
+    productType: row.productType,
+    tenure: row.tenure,
+    tenureUnit: row.tenureUnit,
+    isDemo: row.isDemo,
+    sourceCreatedAt: row.sourceCreatedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -73,25 +88,37 @@ function toActivity(row: ActivityRow): LeadActivity {
   };
 }
 
+function toWebhookEvent(row: WebhookEventRow): LeadWebhookEvent {
+  return {
+    id: row.id,
+    statusSent: row.statusSent,
+    deliveryStatus: row.deliveryStatus,
+    attempts: row.attempts,
+    responseCode: row.responseCode,
+    errorMessage: row.errorMessage,
+    lastAttemptAt: row.lastAttemptAt?.toISOString() ?? null,
+    nextRetryAt: row.nextRetryAt?.toISOString() ?? null,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+// -----------------------------------------------------------------------------
+// Reads
+// -----------------------------------------------------------------------------
+
 export async function listLeads(): Promise<Lead[]> {
-  if (isDemoMode()) {
-    return [...demoStore().leads].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }
   const rows = await prisma.lead.findMany({
     include: { partner: true },
     orderBy: { createdAt: "desc" },
+    // Defensive cap. The table is still rendered client-side in full (real
+    // pagination is a known gap in todo.md), so this bounds the payload rather
+    // than letting one page load grow without limit.
+    take: 1000,
   });
   return rows.map(toLead);
 }
 
 export async function listPartners(): Promise<LeadPartner[]> {
-  if (isDemoMode()) {
-    return PARTNER_SEEDS.map((p) => ({
-      id: p.id,
-      orgName: p.orgName,
-      contactEmail: p.contactEmail,
-    })).sort((a, b) => a.orgName.localeCompare(b.orgName));
-  }
   const rows = await prisma.partner.findMany({ orderBy: { orgName: "asc" } });
   return rows.map(toPartner);
 }
@@ -100,25 +127,16 @@ export type LeadDetail = {
   lead: Lead;
   activities: LeadActivity[];
   duplicates: Lead[];
+  webhookEvents: LeadWebhookEvent[];
 };
 
 export async function getLeadDetail(id: string): Promise<LeadDetail | null> {
-  if (isDemoMode()) {
-    const store = demoStore();
-    const lead = store.leads.find((l) => l.id === id);
-    if (!lead) return null;
-    return {
-      lead,
-      activities: store.activities.get(id) ?? [],
-      duplicates: duplicatesOf(lead, store.leads),
-    };
-  }
-
-  const row = await prisma.lead.findUnique({
+    const row = await prisma.lead.findUnique({
     where: { id },
     include: {
       partner: true,
       activities: { orderBy: { createdAt: "asc" } },
+      webhookEvents: { orderBy: { createdAt: "desc" }, take: 20 },
     },
   });
   if (!row) return null;
@@ -133,13 +151,11 @@ export async function getLeadDetail(id: string): Promise<LeadDetail | null> {
     lead: toLead(row),
     activities: row.activities.map(toActivity),
     duplicates: duplicateRows.map(toLead),
+    webhookEvents: row.webhookEvents.map(toWebhookEvent),
   };
 }
 
 export async function listPartnerSummaries(): Promise<PartnerSummary[]> {
-  if (isDemoMode()) {
-    return demoPartnerSummaries().sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  }
   const rows = await prisma.partner.findMany({
     include: { _count: { select: { leads: true } } },
     orderBy: { createdAt: "asc" },
@@ -152,6 +168,10 @@ export async function listPartnerSummaries(): Promise<PartnerSummary[]> {
   }));
 }
 
+// -----------------------------------------------------------------------------
+// Overview stats
+// -----------------------------------------------------------------------------
+
 export type OverviewStats = {
   totalLeads: number;
   last30Days: number;
@@ -159,64 +179,21 @@ export type OverviewStats = {
   newToday: number;
   activePartners: number;
   duplicates: number;
-  converted: number;
+  disbursed: number;
   byStatus: Record<LeadStatus, number>;
+  /** Statuses present in the data that this build does not know about. */
+  unknownStatuses: { status: string; count: number }[];
   topPartners: { id: string; orgName: string; count: number }[];
 };
 
 const DAY_MS = 86_400_000;
 
-function computeOverviewFromLeads(
-  leads: Lead[],
-  partners: { id: string; orgName: string; status: string }[],
-  now: Date
-): OverviewStats {
-  const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
-  const since30 = new Date(now.getTime() - 30 * DAY_MS);
-  const since60 = new Date(now.getTime() - 60 * DAY_MS);
-
-  const byStatus = Object.fromEntries(
-    LEAD_STATUSES.map((s) => [s, 0])
-  ) as Record<LeadStatus, number>;
-  for (const l of leads) byStatus[l.status]++;
-
-  const last30 = leads.filter((l) => new Date(l.createdAt) >= since30);
-  const prior30 = leads.filter((l) => {
-    const d = new Date(l.createdAt);
-    return d >= since60 && d < since30;
-  });
-
-  const countsByPartner = new Map<string, number>();
-  for (const l of last30) {
-    if (!l.partner) continue;
-    countsByPartner.set(l.partner.id, (countsByPartner.get(l.partner.id) ?? 0) + 1);
-  }
-  const nameById = new Map(partners.map((p) => [p.id, p.orgName]));
-  const topPartners = Array.from(countsByPartner.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([id, count]) => ({ id, orgName: nameById.get(id) ?? "Unknown partner", count }));
-
-  return {
-    totalLeads: leads.length,
-    last30Days: last30.length,
-    prior30Days: prior30.length,
-    newToday: leads.filter((l) => new Date(l.createdAt) >= startOfToday).length,
-    activePartners: partners.filter((p) => p.status === "active").length,
-    duplicates: leads.filter((l) => l.duplicateFlag).length,
-    converted: leads.filter((l) => l.status === "Converted").length,
-    byStatus,
-    topPartners,
-  };
+function emptyStatusTally(): Record<LeadStatus, number> {
+  return Object.fromEntries(LEAD_STATUSES.map((s) => [s, 0])) as Record<LeadStatus, number>;
 }
 
 export async function getOverviewStats(now = new Date()): Promise<OverviewStats> {
-  if (isDemoMode()) {
-    return computeOverviewFromLeads(demoStore().leads, PARTNER_SEEDS, now);
-  }
-
-  const startOfToday = new Date(now);
+    const startOfToday = new Date(now);
   startOfToday.setHours(0, 0, 0, 0);
   const since30 = new Date(now.getTime() - 30 * DAY_MS);
   const since60 = new Date(now.getTime() - 60 * DAY_MS);
@@ -228,7 +205,7 @@ export async function getOverviewStats(now = new Date()): Promise<OverviewStats>
     newToday,
     activePartners,
     duplicates,
-    converted,
+    disbursed,
     statusGroups,
     partnerGroups,
   ] = await Promise.all([
@@ -238,7 +215,7 @@ export async function getOverviewStats(now = new Date()): Promise<OverviewStats>
     prisma.lead.count({ where: { createdAt: { gte: startOfToday } } }),
     prisma.partner.count({ where: { status: "active" } }),
     prisma.lead.count({ where: { duplicateFlag: true } }),
-    prisma.lead.count({ where: { status: "Converted" } }),
+    prisma.lead.count({ where: { status: "DISBURSED" } }),
     prisma.lead.groupBy({ by: ["status"], _count: { _all: true } }),
     prisma.lead.groupBy({
       by: ["partnerId"],
@@ -247,10 +224,15 @@ export async function getOverviewStats(now = new Date()): Promise<OverviewStats>
     }),
   ]);
 
-  const byStatus = Object.fromEntries(
-    LEAD_STATUSES.map((s) => [s, 0])
-  ) as Record<LeadStatus, number>;
-  for (const g of statusGroups) byStatus[g.status] = g._count._all;
+  const byStatus = emptyStatusTally();
+  const unknownStatuses: { status: string; count: number }[] = [];
+  for (const g of statusGroups) {
+    const known = parseLeadStatus(g.status);
+    if (known) byStatus[known] = g._count._all;
+    // `status` is a text column so the partner-facing service can add an
+    // intermediary status without a migration. Surface rather than drop those.
+    else unknownStatuses.push({ status: g.status, count: g._count._all });
+  }
 
   const ranked = partnerGroups
     .filter((g): g is typeof g & { partnerId: string } => g.partnerId !== null)
@@ -268,8 +250,9 @@ export async function getOverviewStats(now = new Date()): Promise<OverviewStats>
     newToday,
     activePartners,
     duplicates,
-    converted,
+    disbursed,
     byStatus,
+    unknownStatuses,
     topPartners: ranked.map((g) => ({
       id: g.partnerId,
       orgName: nameById.get(g.partnerId) ?? "Unknown partner",
@@ -278,65 +261,100 @@ export async function getOverviewStats(now = new Date()): Promise<OverviewStats>
   };
 }
 
-export async function updateLeadStatusRepo(id: string, status: LeadStatus): Promise<void> {
-  if (isDemoMode()) {
-    demoUpdateStatus(id, status);
-    return;
-  }
+// -----------------------------------------------------------------------------
+// Writes
+// -----------------------------------------------------------------------------
 
+export type DisbursementDetails = {
+  loanId?: string;
+  amount?: number;
+  date?: string;
+  tenure?: number;
+};
+
+export class TerminalStatusError extends Error {
+  constructor(from: string) {
+    super(`This lead is already ${statusLabel(from)} and cannot be moved again.`);
+    this.name = "TerminalStatusError";
+  }
+}
+
+/**
+ * Applies a staff status change.
+ *
+ * Three writes, ONE transaction:
+ *   1. leads.status
+ *   2. a lead_activities audit row naming the staff member
+ *   3. a lead_status_outbox row
+ *
+ * serverx drains the outbox and dispatches the AarthikLabs webhook. This is why
+ * it is an outbox row and not an HTTP call to serverx:
+ *
+ *   - An HTTP call cannot be part of this transaction, so the audit row and the
+ *     webhook trigger could diverge.
+ *   - If serverx is down, an HTTP call either blocks the staff member or loses
+ *     the webhook permanently. Outbox rows queue and drain in order on restart.
+ *   - serverx's own PATCH endpoint already dispatches fire-and-forget, so a 200
+ *     from it would not have told us the webhook fired anyway.
+ */
+export async function updateLeadStatusRepo(
+  id: string,
+  status: LeadStatus,
+  actor: string,
+  disbursement?: DisbursementDetails
+): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const current = await tx.lead.findUniqueOrThrow({
       where: { id },
       select: { status: true },
     });
-    if (current.status === status) return;
+    if (current.status === status) return; // no-op: no audit row, no webhook
 
-    await tx.lead.update({ where: { id }, data: { status } });
+    const currentKnown = parseLeadStatus(current.status);
+    if (currentKnown && isTerminalStatus(currentKnown)) {
+      // Reopening a disbursed lead would send AarthikLabs a status regression for
+      // a loan that has already paid out.
+      throw new TerminalStatusError(current.status);
+    }
+
+    await tx.lead.update({
+      where: { id },
+      data: {
+        status,
+        ...(disbursement?.loanId ? { loanId: disbursement.loanId } : {}),
+        ...(disbursement?.amount !== undefined ? { disbursementAmount: disbursement.amount } : {}),
+        ...(disbursement?.date ? { disbursementDate: new Date(disbursement.date) } : {}),
+        ...(disbursement?.tenure !== undefined ? { tenure: disbursement.tenure } : {}),
+        // Recording a disbursal is also the branch manager confirming the loan.
+        ...(status === "DISBURSED" && disbursement?.amount !== undefined
+          ? {
+              branchManagerStatus: "CONFIRMED" as const,
+              loanConfirmedAmount: disbursement.amount,
+              loanConfirmedAt: new Date(),
+            }
+          : {}),
+      },
+    });
+
     await tx.leadActivity.create({
       data: {
         leadId: id,
-        kind: "STATUS_CHANGED",
+        kind: disbursement?.amount !== undefined ? "DISBURSEMENT_RECORDED" : "STATUS_CHANGED",
         fromStatus: current.status,
         toStatus: status,
-        message: `Status changed ${current.status} → ${status}`,
+        message: `Status changed ${statusLabel(current.status)} → ${statusLabel(status)}`,
+        // Previously omitted, so every staff change recorded actor: null while
+        // only the automated sweep named itself.
+        actor,
       },
     });
+
+    await tx.leadStatusOutbox.create({ data: { leadId: id, status, actor } });
   });
 }
 
-const LEAD_TIMEOUT_WORKING_DAYS = 7;
-
-// Closes (rejects) leads that have sat in New or Contacted for 7 working
-// days without reaching Converted. Called on a schedule from the
-// /api/cron/auto-close-leads route, not from any user-facing action.
-export async function closeStaleLeads(): Promise<string[]> {
-  if (isDemoMode()) return [];
-
-  const candidates = await prisma.lead.findMany({
-    where: { status: { in: ["New", "Contacted"] } },
-    select: { id: true, status: true, createdAt: true },
-    take: 500, // defensive cap — no real pagination need expected at current volume
-  });
-
-  const closedIds: string[] = [];
-  for (const lead of candidates) {
-    if (workingDaysSince(lead.createdAt) < LEAD_TIMEOUT_WORKING_DAYS) continue;
-
-    await prisma.$transaction(async (tx) => {
-      await tx.lead.update({ where: { id: lead.id }, data: { status: "Rejected" } });
-      await tx.leadActivity.create({
-        data: {
-          leadId: lead.id,
-          kind: "STATUS_CHANGED",
-          fromStatus: lead.status,
-          toStatus: "Rejected",
-          message: `Auto-closed — no action within ${LEAD_TIMEOUT_WORKING_DAYS} working days`,
-          actor: "system:lead-timeout",
-        },
-      });
-    });
-    closedIds.push(lead.id);
-  }
-
-  return closedIds;
-}
+// NOTE: `closeStaleLeads` used to live here, called by a daily Vercel cron at
+// /api/cron/auto-close-leads. Both are deleted. Lead expiry is now owned solely
+// by serverx's LeadLifecycleService, which sweeps hourly against the same table.
+// Two expiry jobs over one table would race on the same rows with different
+// candidate sets (LEAD_CREATED vs New|Contacted) and each look correct alone.
