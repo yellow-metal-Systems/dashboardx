@@ -21,7 +21,7 @@ function SubmitButton() {
   );
 }
 
-export function LoginForm({ demoMode }: { demoMode: boolean }) {
+export function LoginForm() {
   const [state, formAction] = useFormState<LoginState, FormData>(signIn, { error: null });
 
   return (
@@ -31,16 +31,6 @@ export function LoginForm({ demoMode }: { demoMode: boolean }) {
         <p className="mt-1 text-sm text-on-surface-variant">
           Use the account your administrator created for you.
         </p>
-
-        {demoMode && (
-          <p
-            role="status"
-            className="mt-4 rounded-md bg-secondary-container px-3 py-2 text-xs font-medium text-on-secondary-container"
-          >
-            Demo mode — any email and password will sign you in, and all data shown
-            afterwards is example data.
-          </p>
-        )}
 
         <form action={formAction} className="mt-6">
           <FieldGroup>

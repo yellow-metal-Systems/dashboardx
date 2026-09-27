@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { prisma } from "../prisma";
-import { DEMO_MODE } from "../env";
 import { getSession } from "./session";
 import { verifyPassword } from "./password";
 
@@ -38,19 +37,6 @@ export async function signIn(_prev: LoginState, formData: FormData): Promise<Log
   }
 
   const { email, password } = parsed.data;
-
-  // Demo mode has no database, so no accounts either. Signing in is a no-op that
-  // grants a session — it exists so the UI is navigable during frontend work, and
-  // lib/env.ts guarantees demo mode cannot be active in production.
-  if (DEMO_MODE) {
-    const session = await getSession();
-    session.userId = "demo-user";
-    session.email = email;
-    session.name = "Demo staff";
-    session.role = "admin";
-    await session.save();
-    redirect("/dashboard");
-  }
 
   const user = await prisma.adminUser.findUnique({ where: { email } });
 

@@ -7,7 +7,9 @@ mutableEnv.NODE_ENV = mutableEnv.NODE_ENV ?? "test";
 delete process.env.VERCEL_ENV;
 
 process.env.SESSION_SECRET = "test-session-secret-at-least-32-characters-long";
-process.env.LEADDESK_DEMO = "0";
+// lib/env.ts now requires a database URL in every environment.
+process.env.DATABASE_URL =
+  process.env.DATABASE_URL ?? "postgresql://test:test@127.0.0.1:1/test";
 
 // No test should reach the sibling service or a real database.
 delete process.env.INTERNAL_API_KEY;

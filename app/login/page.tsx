@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 
 import { currentStaff } from "@/lib/auth/session";
-import { DEMO_MODE } from "@/lib/env";
 import { LoginForm } from "@/components/auth/login-form";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +33,7 @@ export default async function LoginPage({
           </p>
         </div>
 
-        <LoginForm demoMode={DEMO_MODE} />
+        <LoginForm />
 
         <p className="mt-6 text-center text-xs text-on-surface-variant">
           Staff access only. Lead records contain borrower personal information.

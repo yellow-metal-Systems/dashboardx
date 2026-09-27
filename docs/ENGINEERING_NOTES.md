@@ -64,10 +64,12 @@ tables this repo does not own.
 - **`DISBURSED` opens the disbursement dialog.** The amount, date, tenure and loan id
   ride along in the AarthikLabs webhook. Before this, no UI collected them and every
   `DISBURSED` webhook shipped nulls.
-- **Demo mode is development-only and fails loudly in production.** `lib/env.ts`
-  throws at module init. It used to be a silent fallback on a blank `DATABASE_URL`,
-  which meant a misconfigured production deploy showed staff a plausible dashboard of
-  fake customers.
+- **There is no demo mode and no example data.** `lib/env.ts` throws at module init
+  if `DATABASE_URL` or `SESSION_SECRET` is missing, in every environment. Demo mode used
+  to be a *silent* fallback on a blank `DATABASE_URL`, so a misconfigured production
+  deploy showed staff a plausible dashboard of fake customers. Do not reintroduce a
+  fallback: if the database is missing, failing to boot is the correct behaviour. Test
+  fixtures belong in `tests/fixtures.ts`, not in application code.
 - **The auth guard inside the server action is not redundant** with `middleware.ts`.
   A server action is a directly invokable POST endpoint; middleware protects the page
   render, `requireStaffOrThrow()` protects the mutation.
@@ -85,10 +87,9 @@ tables this repo does not own.
   the pooler hostnames — transaction pooler `:6543` with `pgbouncer=true&connection_limit=1`
   for runtime, session pooler `:5432` as `DIRECT_URL`. The old `?schema=dashboard`
   is gone; that schema never existed in the database.
-- **`/partner` is a static mock.** Its submit button toggles a banner and writes
-  nothing. It is unlinked from the sidebar so it no longer implies a working portal,
-  but it is still reachable by URL and is *not* behind auth (middleware only covers
-  `/dashboard/*`). It holds no real data.
+- **There is no partner-facing route.** The `/partner` mock was deleted. If you build
+  the real one, remember `middleware.ts` only covers `/dashboard/*` — a new top-level
+  route is unauthenticated until you add it to the matcher.
 - **The leads table renders every row client-side.** `listLeads()` caps at 1000
   defensively. Real pagination is still a gap.
 - **`useState(props)` captures the value once on mount.** The leads table hit this: a
@@ -108,6 +109,6 @@ AarthikLabs — currently it deliberately does not.
 ## Still not built (and the spec asks for it)
 
 The v1 platform spec's partner side: `PartnerUser` and `Invite` models, invitation
-tokens, self-signup, real lead submission from `/partner`, and both transactional
+tokens, self-signup, a real partner submission route, and both transactional
 emails (partner invitation, and the ops new-lead alert the build plan lists under its
 Phase 3). The partners page is read-only — no invite, no disable.

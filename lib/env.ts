@@ -1,62 +1,54 @@
 // Environment validation that fails at module init, not per request.
 //
-// WHY THIS THROWS
-// `isDemoMode()` used to treat a blank DATABASE_URL as "serve the eight example
-// leads". In production that means staff see a plausible dashboard of fake
-// customers, with a status dropdown that writes to an in-memory Map which dies
-// with the lambda — and the auto-close cron reported success while doing nothing.
-// A misconfigured deploy looked like a working one. That is strictly worse than
-// an error page, so a module-scope throw is deliberate: it fails the route render
-// immediately and shows up in the platform's boot logs.
+// There is deliberately no fallback behaviour here. An earlier version treated a
+// blank DATABASE_URL as "serve in-memory example data", which meant a
+// misconfigured production deploy showed staff a plausible dashboard of fake
+// customer records, with a status dropdown writing to a Map that died with the
+// lambda — while the auto-close cron reported success doing nothing. A
+// misconfigured deploy should fail to start, loudly, in every environment.
 
-function isTruthy(value: string | undefined): boolean {
-  return value?.trim() === "1" || value?.trim().toLowerCase() === "true";
+function required(name: string, hint: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(`${name} is not set. ${hint}`);
+  }
+  return value;
 }
 
 const vercelEnv = process.env.VERCEL_ENV?.trim();
 export const IS_PRODUCTION =
   vercelEnv === "production" || (!vercelEnv && process.env.NODE_ENV === "production");
 
-const explicitDemo = isTruthy(process.env.LEADDESK_DEMO);
-const hasDatabaseUrl = Boolean(process.env.DATABASE_URL?.trim());
-
-if (IS_PRODUCTION && !hasDatabaseUrl) {
-  throw new Error(
-    "DATABASE_URL is not set. Refusing to start in production — falling back to " +
-      "in-memory demo data would show staff fake customer records that look real."
-  );
-}
-
-if (IS_PRODUCTION && explicitDemo) {
-  throw new Error(
-    "LEADDESK_DEMO=1 is set in production. Refusing to serve example data to staff."
-  );
-}
-
-if (IS_PRODUCTION && !process.env.SESSION_SECRET?.trim()) {
-  throw new Error(
-    "SESSION_SECRET is not set. Refusing to start in production — every /dashboard " +
-      "route and server action would be unauthenticated."
-  );
-}
+/**
+ * The database. No fallback — this app has no mode in which it runs without one.
+ */
+export const DATABASE_URL = required(
+  "DATABASE_URL",
+  "This app reads and writes the shared `leads` table and has no offline mode. " +
+    "See .env.example; use the Supabase transaction pooler in a deployed environment."
+);
 
 /**
- * Demo mode is now opt-in and development-only. A missing DATABASE_URL outside
- * production still falls back, so a fresh clone runs without a database.
+ * Session cookie signing key. Without it every /dashboard route and every server
+ * action would be unauthenticated, so it is required everywhere rather than only
+ * in production.
  */
-export const DEMO_MODE = !IS_PRODUCTION && (explicitDemo || !hasDatabaseUrl);
+export const SESSION_SECRET = required(
+  "SESSION_SECRET",
+  "Generate one with: openssl rand -base64 32"
+);
 
-/** Base URL of the serverx service, used for the status-update bridge. */
-export const SERVER_BASE_URL = process.env.SERVER_BASE_URL?.trim() || "http://localhost:8080";
-
-export const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY?.trim() ?? "";
-
-/**
- * Session cookie signing secret. In development a fixed fallback keeps logins
- * working across restarts; production is validated above.
- */
-export const SESSION_SECRET =
-  process.env.SESSION_SECRET?.trim() ||
-  "dev-only-session-secret-not-for-production-use-min-32-chars";
+if (SESSION_SECRET.length < 32) {
+  throw new Error("SESSION_SECRET must be at least 32 characters.");
+}
 
 export const SESSION_TTL_SECONDS = Number(process.env.SESSION_TTL_SECONDS ?? 60 * 60 * 8);
+
+/** Base URL of the serverx service, for the two read-only calls in lib/server-bridge.ts. */
+export const SERVER_BASE_URL = process.env.SERVER_BASE_URL?.trim() || "http://localhost:8080";
+
+/**
+ * Must match serverx's INTERNAL_API_KEY. Optional: without it the two figures
+ * server-bridge fetches simply do not render, and nothing else is affected.
+ */
+export const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY?.trim() ?? "";

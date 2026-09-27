@@ -1,6 +1,5 @@
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { isDemoMode } from "@/lib/leads-repo";
 import { requireStaff } from "@/lib/auth/session";
 import { fetchIntegrationHealth } from "@/lib/server-bridge";
 
@@ -22,15 +21,6 @@ export default async function DashboardLayout({
     <SidebarProvider>
       <AppSidebar staffName={staff.name} staffEmail={staff.email} />
       <SidebarInset>
-        {isDemoMode() && (
-          <div
-            role="status"
-            className="border-b border-outline-variant bg-secondary-container px-4 py-1.5 text-center text-xs font-medium text-on-secondary-container"
-          >
-            Demo mode — showing example data, not connected to a database. Status
-            changes are kept in memory only.
-          </div>
-        )}
         {health && !health.healthy && (
           <div
             role="status"

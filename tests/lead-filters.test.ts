@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 
 import { EMPTY_FILTERS, applyLeadFilters, countActiveFilters } from "@/lib/lead-filters";
-import { EXAMPLE_LEADS } from "@/lib/leads";
+import { LEADS } from "./fixtures";
 
-const all = EXAMPLE_LEADS;
+const all = LEADS;
 
 describe("applyLeadFilters", () => {
   it("returns everything with no filters applied", () => {
@@ -25,6 +25,7 @@ describe("applyLeadFilters", () => {
     expect(
       applyLeadFilters(all, { ...EMPTY_FILTERS, status: "BRANCH_VISIT_SCHEDULED" })
     ).toHaveLength(1);
+    expect(applyLeadFilters(all, { ...EMPTY_FILTERS, status: "REJECTED" })).toHaveLength(1);
   });
 
   it("filters by pincode prefix", () => {
@@ -63,6 +64,13 @@ describe("applyLeadFilters", () => {
     });
     expect(combined.every((l) => l.source === "AARTHIKLABS")).toBe(true);
     expect(combined.every((l) => l.acceptanceState === "ACCEPTED")).toBe(true);
+    expect(combined).toHaveLength(1);
+  });
+
+  it("filters by partner", () => {
+    const byPartner = applyLeadFilters(all, { ...EMPTY_FILTERS, partnerId: "p_b" });
+    expect(byPartner).toHaveLength(3);
+    expect(byPartner.every((l) => l.partner?.id === "p_b")).toBe(true);
   });
 
   it("returns an empty list, not an error, when nothing matches", () => {
@@ -76,7 +84,7 @@ describe("applyLeadFilters", () => {
       createdFrom: "2026-09-16",
       createdTo: "2026-09-16",
     });
-    expect(onlyThatDay.length).toBe(2);
+    expect(onlyThatDay).toHaveLength(2);
   });
 });
 

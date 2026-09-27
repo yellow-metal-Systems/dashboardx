@@ -209,8 +209,7 @@ in-flight cannot flash the old status back.
 
 ## Authentication
 
-Staff-only, and it did not exist before this work: every route including `/partner`
-was public, so anyone with the URL could read borrower PII and change any lead's
+Staff-only, and it did not exist before this work: every route was public, so anyone with the URL could read borrower PII and change any lead's
 status.
 
 | Piece | Where |
@@ -230,21 +229,25 @@ a staff member follows a link to a lead from email or chat, which is a normal wa
 arrive. `Lax` still blocks cross-site POSTs.
 
 Create the first account with
-`SEED_ADMIN_PASSWORD='...' npm run db:seed -- --admin-only`.
+`ADMIN_EMAIL='...' ADMIN_PASSWORD='...' npm run db:create-admin`.
 
 ---
 
-## Demo mode
+## No demo mode, no example data
 
-`LEADDESK_DEMO=1` serves the eight example leads from memory with no database.
-**Development only.** `lib/env.ts` throws at module init if production has no
-`DATABASE_URL`, has `LEADDESK_DEMO=1`, or has no `SESSION_SECRET`.
+This app has no mode in which it runs without a real database. `lib/env.ts` throws at
+module init if `DATABASE_URL` or `SESSION_SECRET` is missing, in every environment.
 
-This used to be a silent fallback: a blank `DATABASE_URL` meant "serve example
-data", so a misconfigured production deploy showed staff a plausible dashboard of
-fake customers whose status dropdown wrote to a `Map` that died with the lambda —
-and the auto-close cron reported success while doing nothing. A boot failure is
-strictly better. `tests/env.test.ts` covers each case.
+There used to be a `LEADDESK_DEMO` flag serving eight example leads from an in-memory
+store, and — worse — a blank `DATABASE_URL` fell into it *silently*. A misconfigured
+production deploy therefore showed staff a plausible dashboard of fake customers whose
+status dropdown wrote to a `Map` that died with the lambda, while the auto-close cron
+reported success doing nothing.
+
+All of it is gone rather than gated: the example leads and partners, `lib/demo-store.ts`,
+the demo sign-in bypass, the demo banner, and the static `/partner` mock page.
+Test fixtures now live in `tests/fixtures.ts` where they belong. `tests/env.test.ts`
+covers each refusal.
 
 ---
 
@@ -274,7 +277,7 @@ app/
   page.tsx                      → /login or /dashboard
   login/page.tsx                staff sign-in
   dashboard/
-    layout.tsx                  auth guard, demo banner, integration-health banner
+    layout.tsx                  auth guard, integration-health banner
     page.tsx                    lead list
     leads/[id]/page.tsx         lead detail: LTV figures, timeline, webhook history
     overview/page.tsx           stats
@@ -305,10 +308,10 @@ Real, and deliberately not addressed in this pass:
 
 - **The leads table renders every row client-side.** No pagination; `listLeads()`
   caps at 1000 rows defensively. Fine at current volume.
-- **`/partner` is a static mock.** Its submit button toggles a banner and writes
-  nothing. Unlinked from the sidebar so it no longer implies a working portal, but
-  the page is still reachable by URL. The v1 spec's partner side — `PartnerUser`,
-  `Invite`, invitation tokens, self-signup, real submission — does not exist.
+- **There is no partner-facing route at all.** The v1 spec's partner side —
+  `PartnerUser`, `Invite`, invitation tokens, self-signup, real submission — does not
+  exist. An earlier static mock at `/partner` was deleted rather than left implying a
+  working portal.
 - **No transactional email.** The v1 spec requires a partner-invitation email and an
   ops new-lead alert (§6.1, §11). Neither exists.
 - **The partners page is read-only.** No invite, no disable.

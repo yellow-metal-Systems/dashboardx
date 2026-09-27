@@ -40,16 +40,17 @@ Nothing below is broken. These are gaps and unmade decisions.
 
 ## Not built, and the v1 spec requires it
 
-The entire partner-facing side. `/partner` is a static mock whose submit button toggles
-a banner and writes nothing; it is unlinked from the sidebar so it no longer implies
-otherwise, but it is still reachable by URL and sits outside the auth middleware.
+The entire partner-facing side. There is no partner route at all — the earlier
+`/partner` mock was deleted rather than left implying a working portal. Note that
+`middleware.ts` only guards `/dashboard/*`, so a new top-level route is
+unauthenticated until added to the matcher.
 
 Missing, per the v1 platform spec §6.1 / §11:
 
 - `PartnerUser` and `Invite` models
 - Invitation tokens (single-use, expiring), and the admin flow to send them
 - Partner self-signup
-- Real lead submission from `/partner`, with the duplicate-flag rule applied
+- A real partner submission route, with the duplicate-flag rule applied
 - Two transactional emails: partner invitation, and the ops new-lead alert the
   Production Build Plan lists under its Phase 3
 

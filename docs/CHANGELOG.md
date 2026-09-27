@@ -3,6 +3,47 @@
 Scoped to this repo (`dashboardx` / LeadDesk) only. The AarthikLabs-facing service's
 history lives in the `serverx` repo's own `CHANGELOG.md`.
 
+## 2026-09-28 — remove demo mode and all example data
+
+This app now has no mode in which it runs without a real database, and no fake
+customer records anywhere in the bundle.
+
+**Removed**
+
+- `lib/demo-store.ts` — the in-memory store.
+- `EXAMPLE_LEADS` / `EXAMPLE_PARTNERS` from `lib/leads.ts`. Eight fake borrowers with
+  real-looking names and mobile numbers were shipping in the production bundle so that
+  tests had something to filter. Fixtures now live in `tests/fixtures.ts`.
+- The `LEADDESK_DEMO` flag, the demo banner in the dashboard layout, and the demo
+  sign-in bypass that granted a session to any email/password.
+- `app/partner/` — a static mock page pre-filled with a hardcoded borrower whose submit
+  button toggled a banner and wrote nothing. Deleted rather than left reachable by URL.
+- `prisma/seed.ts`, replaced by `prisma/create-admin.ts` (`npm run db:create-admin`).
+  Creating a staff login is real bootstrap; inserting eight fake leads was not. Renamed
+  the env vars `SEED_ADMIN_*` to `ADMIN_*` to match.
+
+**Changed**
+
+- `lib/env.ts` no longer has a `DEMO_MODE` concept. `DATABASE_URL` and `SESSION_SECRET`
+  are required in **every** environment, not only production, and `SESSION_SECRET` must
+  be at least 32 characters. The old silent fallback on a blank `DATABASE_URL` is what
+  let a misconfigured deploy show staff fake customers with a status dropdown writing to
+  a `Map` that died with the lambda.
+- `lib/leads-repo.ts` lost six `isDemoMode()` branches and the `computeOverviewFromLeads`
+  helper that only the demo path used.
+- `tests/env.test.ts` rewritten for the new rules, including a case asserting that
+  setting `LEADDESK_DEMO=1` now has no effect at all.
+- Fixed a real trap in that test file while rewriting it: `afterEach` was *reassigning*
+  `process.env`, which handed later tests a detached object, so a write landed somewhere
+  the module under test never read. It restores in place now.
+
+**Moved**
+
+- `CHANGELOG.md` → `docs/CHANGELOG.md`, leaving `README.md` alone at the repo root.
+
+47 tests pass, typecheck and lint clean, `next build` clean — and `/partner` is gone
+from the route table.
+
 ## 2026-09-27 — one database, one table, real auth
 
 LeadDesk and `serverx` now share ONE Supabase Postgres and ONE `leads` table, which is

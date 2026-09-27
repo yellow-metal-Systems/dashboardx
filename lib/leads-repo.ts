@@ -6,10 +6,8 @@ import type {
 } from "@prisma/client";
 
 import { prisma } from "./prisma";
-import { DEMO_MODE } from "./env";
 import {
   LEAD_STATUSES,
-  duplicatesOf,
   isTerminalStatus,
   joinAddress,
   parseLeadStatus,
@@ -21,19 +19,6 @@ import {
   type LeadWebhookEvent,
   type PartnerSummary,
 } from "./leads";
-import { demoPartnerSummaries, demoStore, demoUpdateStatus, PARTNER_SEEDS } from "./demo-store";
-
-/**
- * Demo mode serves in-memory example data with no database.
- *
- * Now opt-in and development-only: lib/env.ts throws at module init if a
- * production environment has no DATABASE_URL, rather than silently showing staff
- * a dashboard of fake customers whose status dropdown writes to a Map that dies
- * with the lambda.
- */
-export function isDemoMode(): boolean {
-  return DEMO_MODE;
-}
 
 type LeadWithPartner = LeadRow & { partner: PartnerRow | null };
 
@@ -122,9 +107,6 @@ function toWebhookEvent(row: WebhookEventRow): LeadWebhookEvent {
 // -----------------------------------------------------------------------------
 
 export async function listLeads(): Promise<Lead[]> {
-  if (isDemoMode()) {
-    return [...demoStore().leads].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }
   const rows = await prisma.lead.findMany({
     include: { partner: true },
     orderBy: { createdAt: "desc" },
@@ -137,13 +119,6 @@ export async function listLeads(): Promise<Lead[]> {
 }
 
 export async function listPartners(): Promise<LeadPartner[]> {
-  if (isDemoMode()) {
-    return PARTNER_SEEDS.map((p) => ({
-      id: p.id,
-      orgName: p.orgName,
-      contactEmail: p.contactEmail,
-    })).sort((a, b) => a.orgName.localeCompare(b.orgName));
-  }
   const rows = await prisma.partner.findMany({ orderBy: { orgName: "asc" } });
   return rows.map(toPartner);
 }
@@ -156,19 +131,7 @@ export type LeadDetail = {
 };
 
 export async function getLeadDetail(id: string): Promise<LeadDetail | null> {
-  if (isDemoMode()) {
-    const store = demoStore();
-    const lead = store.leads.find((l) => l.id === id);
-    if (!lead) return null;
-    return {
-      lead,
-      activities: store.activities.get(id) ?? [],
-      duplicates: duplicatesOf(lead, store.leads),
-      webhookEvents: [],
-    };
-  }
-
-  const row = await prisma.lead.findUnique({
+    const row = await prisma.lead.findUnique({
     where: { id },
     include: {
       partner: true,
@@ -193,9 +156,6 @@ export async function getLeadDetail(id: string): Promise<LeadDetail | null> {
 }
 
 export async function listPartnerSummaries(): Promise<PartnerSummary[]> {
-  if (isDemoMode()) {
-    return demoPartnerSummaries().sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  }
   const rows = await prisma.partner.findMany({
     include: { _count: { select: { leads: true } } },
     orderBy: { createdAt: "asc" },
@@ -232,61 +192,8 @@ function emptyStatusTally(): Record<LeadStatus, number> {
   return Object.fromEntries(LEAD_STATUSES.map((s) => [s, 0])) as Record<LeadStatus, number>;
 }
 
-function computeOverviewFromLeads(
-  leads: Lead[],
-  partners: { id: string; orgName: string; status: string }[],
-  now: Date
-): OverviewStats {
-  const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
-  const since30 = new Date(now.getTime() - 30 * DAY_MS);
-  const since60 = new Date(now.getTime() - 60 * DAY_MS);
-
-  const byStatus = emptyStatusTally();
-  const unknown = new Map<string, number>();
-  for (const l of leads) {
-    const known = parseLeadStatus(l.status);
-    if (known) byStatus[known]++;
-    else unknown.set(l.status, (unknown.get(l.status) ?? 0) + 1);
-  }
-
-  const last30 = leads.filter((l) => new Date(l.createdAt) >= since30);
-  const prior30 = leads.filter((l) => {
-    const d = new Date(l.createdAt);
-    return d >= since60 && d < since30;
-  });
-
-  const countsByPartner = new Map<string, number>();
-  for (const l of last30) {
-    if (!l.partner) continue;
-    countsByPartner.set(l.partner.id, (countsByPartner.get(l.partner.id) ?? 0) + 1);
-  }
-  const nameById = new Map(partners.map((p) => [p.id, p.orgName]));
-  const topPartners = Array.from(countsByPartner.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([id, count]) => ({ id, orgName: nameById.get(id) ?? "Unknown partner", count }));
-
-  return {
-    totalLeads: leads.length,
-    last30Days: last30.length,
-    prior30Days: prior30.length,
-    newToday: leads.filter((l) => new Date(l.createdAt) >= startOfToday).length,
-    activePartners: partners.filter((p) => p.status === "active").length,
-    duplicates: leads.filter((l) => l.duplicateFlag).length,
-    disbursed: leads.filter((l) => l.status === "DISBURSED").length,
-    byStatus,
-    unknownStatuses: Array.from(unknown.entries()).map(([status, count]) => ({ status, count })),
-    topPartners,
-  };
-}
-
 export async function getOverviewStats(now = new Date()): Promise<OverviewStats> {
-  if (isDemoMode()) {
-    return computeOverviewFromLeads(demoStore().leads, PARTNER_SEEDS, now);
-  }
-
-  const startOfToday = new Date(now);
+    const startOfToday = new Date(now);
   startOfToday.setHours(0, 0, 0, 0);
   const since30 = new Date(now.getTime() - 30 * DAY_MS);
   const since60 = new Date(now.getTime() - 60 * DAY_MS);
@@ -396,11 +303,6 @@ export async function updateLeadStatusRepo(
   actor: string,
   disbursement?: DisbursementDetails
 ): Promise<void> {
-  if (isDemoMode()) {
-    demoUpdateStatus(id, status, actor);
-    return;
-  }
-
   await prisma.$transaction(async (tx) => {
     const current = await tx.lead.findUniqueOrThrow({
       where: { id },

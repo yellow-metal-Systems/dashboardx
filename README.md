@@ -17,7 +17,7 @@ network via the sibling `serverx` service.
 npm install
 cp .env.example .env          # then fill it in — the notes in that file matter
 npx prisma generate
-npm run db:seed               # example leads + your staff login (see below)
+npm run db:create-admin       # your staff login (see below)
 npm run dev                   # http://localhost:3000
 ```
 
@@ -32,21 +32,22 @@ cd ../serverx && npx prisma migrate deploy
 There is no default account, on purpose:
 
 ```bash
-SEED_ADMIN_PASSWORD='a-long-passphrase' npm run db:seed -- --admin-only
+ADMIN_EMAIL='you@yellowmetal.example' ADMIN_PASSWORD='a-long-passphrase' \
+  npm run db:create-admin
 ```
 
-Defaults to `admin@yellowmetal.example`; override with `SEED_ADMIN_EMAIL`. Minimum 12
-characters.
+Minimum 12 characters. Run it again with the same email to reset a password.
 
-### Without a database
+### There is no offline mode
 
-```bash
-LEADDESK_DEMO=1 npm run dev
-```
+This app reads and writes the real shared `leads` table and has no demo or
+example-data mode. `lib/env.ts` throws at module init if `DATABASE_URL` or
+`SESSION_SECRET` is missing, in **every** environment.
 
-Serves eight example leads from memory. **Development only** — `lib/env.ts` refuses to
-start if demo mode is on in production, because staff seeing fake customer records that
-look real is worse than an error page.
+An earlier version fell back to in-memory example data when `DATABASE_URL` was blank,
+which meant a misconfigured deploy showed staff a plausible dashboard of fake customer
+records. All of it — the example leads, the in-memory store, the demo sign-in bypass —
+has been removed rather than gated.
 
 ## Scripts
 
@@ -56,7 +57,7 @@ look real is worse than an error page.
 | `npm test` | Vitest — 44 tests, no database needed |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | `next lint` |
-| `npm run db:seed` | Example leads (all flagged `isDemo`) + staff account |
+| `npm run db:create-admin` | Create or reset a staff login |
 | `npm run db:pull` | Re-generate the Prisma client from the live schema after `serverx` ships a migration |
 | `npm run db:drift` | Exit 2 if this datamodel is behind the database |
 

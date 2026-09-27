@@ -14,7 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:pull": "prisma db pull && prisma generate",
-    "db:seed": "tsx prisma/seed.ts",
+    "db:create-admin": "tsx prisma/create-admin.ts",
     "db:drift": "prisma migrate diff --from-schema-datamodel prisma/schema.prisma --to-schema-datasource prisma/schema.prisma --exit-code",
     "postinstall": "prisma generate"
   },
@@ -28,9 +28,6 @@
     "prisma/schema.prisma. `npm run db:drift` reports whether this datamodel is",
     "behind the live database."
   ],
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
-  },
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "@radix-ui/react-dialog": "^1.1.23",

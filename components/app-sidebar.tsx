@@ -80,11 +80,10 @@ export function AppSidebar({ staffName, staffEmail }: Props) {
         </SidebarGroup>
       </SidebarContent>
       {/*
-        The "Partner App" link to /partner was removed. That page is a static mock
-        whose submit button only toggles a banner — it writes nothing anywhere — so
-        linking to it from the staff sidebar implied a working partner portal.
-        Partner authentication, invitations and real lead submission are a separate
-        piece of work (see docs/ENGINEERING_NOTES.md).
+        There is no partner-facing route. Partner authentication, invitations and
+        real lead submission are a separate piece of work — see docs/TODO.md. An
+        earlier static mock at /partner was removed rather than left implying a
+        working portal.
       */}
       <SidebarFooter>
         <div className="px-2 py-1.5">
