@@ -1,8 +1,10 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AlertTriangle, ArrowLeft, ExternalLink } from "lucide-react";
 
 import { LeadStatusSelect } from "@/components/leads/lead-status-select";
+import { MaxEligibleLoan, MaxEligibleLoanSkeleton } from "@/components/leads/max-eligible-loan";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -19,7 +21,6 @@ import {
   statusLabel,
 } from "@/lib/leads";
 import { getLeadDetail } from "@/lib/leads-repo";
-import { fetchGoldInsights } from "@/lib/server-bridge";
 
 export const dynamic = "force-dynamic";
 
@@ -49,11 +50,6 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
   const detail = await getLeadDetail(params.id);
   if (!detail) notFound();
   const { lead, activities, duplicates, webhookEvents } = detail;
-
-  // Computed by the AarthikLabs-facing service, which owns the live gold-rate
-  // lookup. Null when that service or the rate API is unreachable: the page still
-  // renders and says the figures are unavailable rather than showing a wrong number.
-  const gold = lead.goldGrams !== null ? await fetchGoldInsights(lead.id) : null;
 
   const ref = leadRef(lead);
   const isAarthik = lead.source === "AARTHIKLABS";
@@ -173,47 +169,9 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
               </dl>
 
               {lead.goldGrams !== null && (
-                <div className="mt-2 rounded-lg border border-outline-variant bg-surface-container-low p-4">
-                  <p className="text-label-sm uppercase tracking-widest text-label">
-                    Maximum eligible loan
-                  </p>
-                  {gold &&
-                  (gold.maxEligibleBullet68 !== null || gold.maxEligibleMonthly75 !== null) ? (
-                    <>
-                      <dl className="mt-3 grid gap-4 sm:grid-cols-2">
-                        {gold.maxEligibleBullet68 !== null && (
-                          <Field label="Bullet plan, 68% LTV">
-                            <span className="text-lg font-semibold">
-                              {formatInr(gold.maxEligibleBullet68)}
-                            </span>
-                          </Field>
-                        )}
-                        {gold.maxEligibleMonthly75 !== null && (
-                          <Field label="Monthly plan, 75% LTV">
-                            <span className="text-lg font-semibold">
-                              {formatInr(gold.maxEligibleMonthly75)}
-                            </span>
-                          </Field>
-                        )}
-                      </dl>
-                      <p className="mt-3 text-xs text-on-surface-variant">
-                        On {lead.goldGrams} g
-                        {gold.rateUsed !== null
-                          ? ` at ${formatInr(gold.rateUsed)}/g (22K)`
-                          : " at the 22K rate"}
-                        {gold.rateSource === "fallback"
-                          ? " — fallback rate, live rate unavailable."
-                          : "."}{" "}
-                        Both plans are shown because the branch manager selects the
-                        plan in person, after assessing the actual gold.
-                      </p>
-                    </>
-                  ) : (
-                    <p className="mt-2 text-sm text-on-surface-variant">
-                      Unavailable — could not reach the rate service. Reload to try again.
-                    </p>
-                  )}
-                </div>
+                <Suspense fallback={<MaxEligibleLoanSkeleton />}>
+                  <MaxEligibleLoan leadId={lead.id} goldGrams={lead.goldGrams} />
+                </Suspense>
               )}
             </CardContent>
           </Card>
@@ -349,12 +307,12 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
                           </span>
                           <Badge
                             className={cn(
-                              "border-transparent text-[10px] uppercase tracking-wider hover:bg-inherit",
+                              "border-transparent text-[10px] uppercase tracking-wider",
                               delivered
-                                ? "bg-success-solid font-bold text-white"
+                                ? "bg-success-solid font-bold text-white hover:bg-success-solid"
                                 : failed
-                                  ? "bg-error-solid font-bold text-white"
-                                  : "bg-secondary-container font-extrabold text-on-secondary-container"
+                                  ? "bg-error-solid font-bold text-white hover:bg-error-solid"
+                                  : "bg-secondary-container font-extrabold text-on-secondary-container hover:bg-secondary-container"
                             )}
                           >
                             {delivered ? "Delivered" : failed ? "Failed" : "Sending"}
@@ -382,7 +340,7 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
               <SectionTitle>Branch manager</SectionTitle>
               <Badge
                 className={cn(
-                  "self-start border-transparent hover:bg-inherit",
+                  "self-start border-transparent",
                   BRANCH_MANAGER_BADGE_CLASSES[lead.branchManagerStatus]
                 )}
               >

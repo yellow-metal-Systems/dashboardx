@@ -312,13 +312,13 @@ export function LeadsDashboard({ initialLeads, partners }: Props) {
                       <TableCell className="text-right tabular-nums">
                         {amount !== null ? formatInr(amount) : "—"}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="whitespace-nowrap">
                         <Badge
                           className={cn(
-                            "border-transparent hover:bg-inherit",
+                            "border-transparent",
                             lead.source === "AARTHIKLABS"
-                              ? "bg-black-solid font-bold text-white"
-                              : "bg-secondary-container font-extrabold text-on-secondary-container"
+                              ? "bg-black-solid font-bold text-white hover:bg-black-solid"
+                              : "bg-secondary-container font-extrabold text-on-secondary-container hover:bg-secondary-container"
                           )}
                         >
                           {SOURCE_LABELS[lead.source]}
