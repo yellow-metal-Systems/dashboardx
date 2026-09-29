@@ -63,7 +63,7 @@ export default async function PartnersPage() {
                     <TableCell>
                       <Badge
                         className={cn(
-                          "border-transparent capitalize",
+                          "border-transparent capitalize hover:bg-inherit",
                           PARTNER_STATUS_BADGE_CLASSES[p.status]
                         )}
                       >

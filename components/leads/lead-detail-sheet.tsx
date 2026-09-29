@@ -100,10 +100,10 @@ export function LeadDetailSheet({
                 </Badge>
                 <Badge
                   className={cn(
-                    "border-transparent",
+                    "border-transparent hover:bg-inherit",
                     isAarthik
-                      ? "bg-black-solid font-bold text-white hover:bg-black-solid"
-                      : "bg-secondary-container font-extrabold text-on-secondary-container hover:bg-secondary-container"
+                      ? "bg-black-solid font-bold text-white"
+                      : "bg-secondary-container font-extrabold text-on-secondary-container"
                   )}
                 >
                   {SOURCE_LABELS[lead.source]}
@@ -195,7 +195,7 @@ export function LeadDetailSheet({
                           </span>
                           <Badge
                             className={cn(
-                              "shrink-0 border-transparent",
+                              "shrink-0 border-transparent hover:bg-inherit",
                               statusBadgeClass(d.status)
                             )}
                           >
@@ -267,7 +267,7 @@ export function LeadDetailSheet({
               <Row label="Hand-off">
                 <Badge
                   className={cn(
-                    "border-transparent",
+                    "border-transparent hover:bg-inherit",
                     BRANCH_MANAGER_BADGE_CLASSES[lead.branchManagerStatus]
                   )}
                 >
