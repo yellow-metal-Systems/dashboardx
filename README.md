@@ -146,6 +146,7 @@ middleware.ts                 edge auth guard
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how the two repos fit together
 - [`docs/ENGINEERING_NOTES.md`](docs/ENGINEERING_NOTES.md) — decisions not to silently redo
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — deploying it, and running it afterwards
 - [`CHANGELOG.md`](CHANGELOG.md) — what changed and why
 - [`docs/TODO.md`](docs/TODO.md) — known gaps and open preference calls
 - `../serverx/README.md` — the AarthikLabs-facing service
