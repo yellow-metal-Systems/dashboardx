@@ -193,9 +193,14 @@ export const BRANCH_MANAGER_LABELS: Record<BranchManagerStatus, string> = {
 
 // Tailwind utility classes built only from the brand's existing colour tokens —
 // no new colours invented.
-const NEUTRAL_BADGE = "bg-secondary-container font-extrabold text-on-secondary-container";
-const SUCCESS_BADGE = "bg-success-solid font-bold text-white";
-const ERROR_BADGE = "bg-error-solid font-bold text-white";
+// hover: pinned to the same color as resting state — call sites previously
+// merged these after their own "hover:bg-inherit", which made the badge
+// inherit its background from the table row on hover (white bg + white text
+// = invisible).
+const NEUTRAL_BADGE =
+  "bg-secondary-container font-extrabold text-on-secondary-container hover:bg-secondary-container";
+const SUCCESS_BADGE = "bg-success-solid font-bold text-white hover:bg-success-solid";
+const ERROR_BADGE = "bg-error-solid font-bold text-white hover:bg-error-solid";
 
 export const STATUS_BADGE_CLASSES: Record<LeadStatus, string> = {
   LEAD_CREATED: NEUTRAL_BADGE,
