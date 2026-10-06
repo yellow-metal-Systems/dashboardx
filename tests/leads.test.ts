@@ -3,12 +3,16 @@ import { describe, it, expect } from "vitest";
 import {
   LEAD_STATUSES,
   STATUS_BADGE_CLASSES,
+  hasProvisionalOffer,
   isTerminalStatus,
   joinAddress,
+  offerPlanLabel,
   parseLeadStatus,
   statusBadgeClass,
   statusLabel,
 } from "@/lib/leads";
+
+import { makeLead } from "./fixtures";
 
 describe("canonical status vocabulary", () => {
   it("matches the vocabulary the AarthikLabs-facing service stores", () => {
@@ -97,5 +101,31 @@ describe("joinAddress", () => {
     expect(joinAddress("24 Kalawad Road", null)).toBe("24 Kalawad Road");
     expect(joinAddress(null, "Near KKV Hall")).toBe("Near KKV Hall");
     expect(joinAddress(null, null)).toBe("");
+  });
+});
+
+describe("provisional ONDC offer", () => {
+  const base = {
+    id: "YMLEAD0000000001",
+    leadNo: 1,
+    name: "Test",
+    mobile: "9876543210",
+    pinCode: "360001",
+    createdAt: "2026-10-06T00:00:00.000Z",
+  };
+
+  it("is absent on a Flow-4 lead that carries no offer", () => {
+    expect(hasProvisionalOffer(makeLead(base))).toBe(false);
+  });
+
+  it("is present when any offer field was sent — a free processing fee counts", () => {
+    expect(hasProvisionalOffer(makeLead({ ...base, offerProcessingFee: 0 }))).toBe(true);
+    expect(hasProvisionalOffer(makeLead({ ...base, offerProductType: "BULLET" }))).toBe(true);
+  });
+
+  it("labels both plans with their LTV and falls back to the raw value", () => {
+    expect(offerPlanLabel("BULLET")).toBe("Bullet · 68% LTV");
+    expect(offerPlanLabel("MONTHLY")).toBe("Monthly · 75% LTV");
+    expect(offerPlanLabel("SOMETHING_NEW")).toBe("SOMETHING_NEW");
   });
 });

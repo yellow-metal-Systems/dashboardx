@@ -3,6 +3,20 @@
 Scoped to this repo (`dashboardx` / LeadDesk) only. The AarthikLabs-facing service's
 history lives in the `serverx` repo's own `CHANGELOG.md`.
 
+## 2026-10-06 — ONDC recon fields and provisional offer
+
+Follows serverx migration `2_ondc_recon_and_offer`, which must be applied first.
+
+- `prisma/schema.prisma` declares the six new `leads` columns: `ondcTransactionId`,
+  `lspName` and the four `offer*` fields. All are read-only here — serverx writes
+  them. `loanAmount` is now also written by serverx for AarthikLabs leads.
+- Lead detail (sheet and full page) shows the requested amount for AarthikLabs
+  leads too, a **Provisional offer** block (plan with LTV, ROI p.a., processing
+  fee, tenure in days), hidden for Flow-4 leads with no offer, and the LSP and
+  selectable ONDC transaction id under Source.
+- A rate that disagrees with our table appears on the SUBMITTED timeline entry
+  ("check pricing: …"), written by serverx; no UI change was needed for that.
+
 ## 2026-09-28 — remove demo mode and all example data
 
 This app now has no mode in which it runs without a real database, and no fake

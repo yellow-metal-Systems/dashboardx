@@ -133,6 +133,9 @@ export type Lead = {
   loanId: string | null;
   source: LeadSource;
   partner: LeadPartner | null;
+  /** AarthikLabs' ONDC reconciliation key; null on partner-referral leads. */
+  ondcTransactionId: string | null;
+  lspName: string | null;
   name: string;
   mobile: string;
   /** Derived from addressLine1 + addressLine2 — there is no single address column. */
@@ -147,6 +150,11 @@ export type Lead = {
   ltvPercent: number | null;
   kfsReference: string | null;
   offerAcceptedAt: string | null;
+  /** Provisional ONDC offer as the borrower saw it — not the disbursed loan. */
+  offerProductType: string | null;
+  offerRoiPercentPa: number | null;
+  offerProcessingFee: number | null;
+  offerTenureDays: number | null;
   acceptanceState: AcceptanceState;
   status: string;
   duplicateFlag: boolean;
@@ -177,6 +185,29 @@ export const SOURCE_LABELS: Record<LeadSource, string> = {
   PARTNER: "Partner",
   AARTHIKLABS: "AarthikLabs / ONDC",
 };
+
+/**
+ * The provisional ONDC offer's plan type. Stored as text by serverx, so an
+ * unexpected value falls back to the raw string rather than rendering blank.
+ */
+const OFFER_PLAN_LABELS: Record<string, string> = {
+  BULLET: "Bullet · 68% LTV",
+  MONTHLY: "Monthly · 75% LTV",
+};
+
+export function offerPlanLabel(productType: string): string {
+  return OFFER_PLAN_LABELS[productType] ?? productType;
+}
+
+/** True when AarthikLabs sent any part of a provisional offer (Flow 4 sends none). */
+export function hasProvisionalOffer(lead: Lead): boolean {
+  return (
+    lead.offerProductType !== null ||
+    lead.offerRoiPercentPa !== null ||
+    lead.offerProcessingFee !== null ||
+    lead.offerTenureDays !== null
+  );
+}
 
 export const ACCEPTANCE_LABELS: Record<AcceptanceState, string> = {
   NA: "N/A",
