@@ -17,6 +17,8 @@ import {
   formatDate,
   formatDateTime,
   formatInr,
+  hasProvisionalOffer,
+  offerPlanLabel,
   leadRef,
   statusLabel,
 } from "@/lib/leads";
@@ -113,7 +115,7 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
             <CardContent className="flex flex-col gap-4 pt-6 md:pt-9">
               <SectionTitle>{isAarthik ? "Loan offer" : "Loan request"}</SectionTitle>
               <dl className="grid gap-4 sm:grid-cols-2">
-                {!isAarthik && lead.loanAmount !== null && (
+                {lead.loanAmount !== null && (
                   <Field label="Required amount">
                     <span className="text-lg font-semibold">{formatInr(lead.loanAmount)}</span>
                   </Field>
@@ -167,6 +169,29 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
                   </Field>
                 )}
               </dl>
+
+              {hasProvisionalOffer(lead) && (
+                <div className="flex flex-col gap-3 border-t border-outline-variant pt-4">
+                  <p className="text-sm text-on-surface-variant">
+                    Provisional offer the borrower selected on ONDC. The branch
+                    confirms the final plan after assessing the gold.
+                  </p>
+                  <dl className="grid gap-4 sm:grid-cols-2">
+                    {lead.offerProductType && (
+                      <Field label="Plan">{offerPlanLabel(lead.offerProductType)}</Field>
+                    )}
+                    {lead.offerRoiPercentPa !== null && (
+                      <Field label="Interest">{lead.offerRoiPercentPa}% p.a.</Field>
+                    )}
+                    {lead.offerProcessingFee !== null && (
+                      <Field label="Processing fee">{formatInr(lead.offerProcessingFee)}</Field>
+                    )}
+                    {lead.offerTenureDays !== null && (
+                      <Field label="Tenure">{lead.offerTenureDays} days</Field>
+                    )}
+                  </dl>
+                </div>
+              )}
 
               {lead.goldGrams !== null && (
                 <Suspense fallback={<MaxEligibleLoanSkeleton />}>
@@ -287,6 +312,18 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
                   Pushed by AarthikLabs on behalf of an ONDC buyer app; no partner
                   organization is involved.
                 </p>
+                {lead.lspName && (
+                  <p className="text-sm text-on-surface">
+                    <span className="text-on-surface-variant">LSP: </span>
+                    {lead.lspName}
+                  </p>
+                )}
+                {lead.ondcTransactionId && (
+                  <p className="break-all text-sm text-on-surface">
+                    <span className="text-on-surface-variant">ONDC transaction: </span>
+                    <span className="select-all font-mono text-xs">{lead.ondcTransactionId}</span>
+                  </p>
+                )}
               </CardContent>
             </Card>
           )}

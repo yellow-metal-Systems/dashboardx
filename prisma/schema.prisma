@@ -28,7 +28,9 @@
 //   offerAmount, ltvPercent, kfsReference
 //   ...plus everything on Partner, LeadActivity, LeadStatusOutbox and AdminUser.
 // Partner-owned columns (customerId, loanId, disbursement*, productType, tenure*,
-// offerAcceptedAt, and the borrower identity fields) are written by serverx.
+// offerAcceptedAt, ondcTransactionId, lspName, offer* and the borrower identity
+// fields) are written by serverx. loanAmount is written by this repo for
+// partner-referral leads and by serverx for AarthikLabs leads.
 // Reading any column is always fine.
 
 generator client {
@@ -92,6 +94,11 @@ model Lead {
   source    LeadSource @default(PARTNER)
   partnerId String?    @map("partner_id")
 
+  /// AarthikLabs' ONDC reconciliation key. Null on partner-referral leads.
+  ondcTransactionId String? @map("ondc_transaction_id")
+  /// The ONDC lead-generating app the borrower came through.
+  lspName           String? @map("lsp_name")
+
   name          String
   mobile        String    @map("mobile_number")
   pinCode       String    @map("pincode")
@@ -108,6 +115,13 @@ model Lead {
   ltvPercent      Decimal?  @map("ltv_percent") @db.Decimal(5, 2)
   kfsReference    String?   @map("kfs_reference")
   offerAcceptedAt DateTime? @map("offer_accepted_at") @db.Timestamptz(3)
+
+  /// Provisional ONDC offer, exactly as the borrower saw it. NOT the disbursed
+  /// loan — that is productType/tenure below.
+  offerProductType   String?  @map("offer_product_type")
+  offerRoiPercentPa  Decimal? @map("offer_roi_percent_pa") @db.Decimal(5, 2)
+  offerProcessingFee Decimal? @map("offer_processing_fee") @db.Decimal(12, 2)
+  offerTenureDays    Int?     @map("offer_tenure_days")
 
   status String @default("LEAD_CREATED")
 
@@ -141,6 +155,7 @@ model Lead {
   @@index([status])
   @@index([source])
   @@index([partnerId])
+  @@index([ondcTransactionId])
   @@index([loanAmount])
   @@index([offerAmount])
   @@index([status, createdAt])

@@ -33,7 +33,9 @@ import {
   formatDate,
   formatDateTime,
   formatInr,
+  hasProvisionalOffer,
   leadRef,
+  offerPlanLabel,
   type Lead,
 } from "@/lib/leads";
 
@@ -81,7 +83,6 @@ export function LeadDetailSheet({
   onSelectLead,
 }: Props) {
   const duplicates = lead ? duplicatesOf(lead, allLeads) : [];
-  const isPartner = lead?.source === "PARTNER";
   const isAarthik = lead?.source === "AARTHIKLABS";
   const kfsIsUrl = lead?.kfsReference?.startsWith("http") ?? false;
 
@@ -135,7 +136,7 @@ export function LeadDetailSheet({
             </Section>
 
             <Section title="Loan details">
-              {isPartner && lead.loanAmount !== null && (
+              {lead.loanAmount !== null && (
                 <Row label="Requested amount">{formatInr(lead.loanAmount)}</Row>
               )}
               {isAarthik && lead.offerAmount !== null && (
@@ -149,8 +150,31 @@ export function LeadDetailSheet({
               )}
             </Section>
 
+            {hasProvisionalOffer(lead) && (
+              <Section title="Provisional offer">
+                {lead.offerProductType && (
+                  <Row label="Plan">{offerPlanLabel(lead.offerProductType)}</Row>
+                )}
+                {lead.offerRoiPercentPa !== null && (
+                  <Row label="Interest">{lead.offerRoiPercentPa}% p.a.</Row>
+                )}
+                {lead.offerProcessingFee !== null && (
+                  <Row label="Processing fee">{formatInr(lead.offerProcessingFee)}</Row>
+                )}
+                {lead.offerTenureDays !== null && (
+                  <Row label="Tenure">{lead.offerTenureDays} days</Row>
+                )}
+              </Section>
+            )}
+
             <Section title="Source">
               <Row label="Channel">{SOURCE_LABELS[lead.source]}</Row>
+              {lead.lspName && <Row label="LSP">{lead.lspName}</Row>}
+              {lead.ondcTransactionId && (
+                <Row label="ONDC transaction">
+                  <span className="select-all font-mono text-xs">{lead.ondcTransactionId}</span>
+                </Row>
+              )}
               {lead.partner && (
                 <>
                   <Row label="Partner org">{lead.partner.orgName}</Row>
