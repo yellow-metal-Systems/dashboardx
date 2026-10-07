@@ -293,8 +293,20 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
                 >
                   {lead.partner.contactEmail}
                 </a>
+                {lead.externalRef && (
+                  <p className="text-sm text-on-surface">
+                    <span className="text-on-surface-variant">Their reference: </span>
+                    {lead.externalRef}
+                  </p>
+                )}
+                {lead.agentRef && (
+                  <p className="text-sm text-on-surface">
+                    <span className="text-on-surface-variant">Their agent: </span>
+                    {lead.agentRef}
+                  </p>
+                )}
                 <Link
-                  href="/dashboard/partners"
+                  href={`/dashboard/partners/${lead.partner.id}`}
                   className="mt-1 text-sm font-medium text-primary underline-offset-4 hover:underline"
                 >
                   View partner →
