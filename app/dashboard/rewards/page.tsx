@@ -14,6 +14,9 @@ const LABEL: Record<RewardState, string> = { PENDING: "To approve", APPROVED: "T
 
 const crore = (n: number) =>
   n >= 10_000_000 ? `₹${(n / 10_000_000).toLocaleString("en-IN", { maximumFractionDigits: 2 })} crore` : formatInr(n);
+// Even padding on every side. CardContent's default drops the top padding
+// because it expects a CardHeader above it; these cards have none.
+const PAD = "p-5 md:p-6";
 const monthName = (d: Date) => new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric", timeZone: "UTC" }).format(d);
 
 export default async function RewardsPage({ searchParams }: { searchParams: { status?: string } }) {
@@ -34,12 +37,12 @@ export default async function RewardsPage({ searchParams }: { searchParams: { st
       </div>
 
       <Card>
-        <CardContent className="pt-6"><RewardRulesForm current={rules} /></CardContent>
+        <CardContent className={PAD}><RewardRulesForm current={rules} /></CardContent>
       </Card>
 
       {awaiting.length > 0 && (
         <Card>
-          <CardContent className="flex flex-col gap-1 pt-6 text-sm">
+          <CardContent className={cn("flex flex-col gap-1 text-sm", PAD)}>
             <b className="text-on-pending-soft">
               {awaiting.length} disbursed {awaiting.length === 1 ? "loan needs its" : "loans need their"} amount before a reward can be worked out
             </b>
@@ -73,20 +76,19 @@ export default async function RewardsPage({ searchParams }: { searchParams: { st
       </nav>
 
       {rows.length === 0 ? (
-        <Card><CardContent className="py-10 text-center text-sm text-on-surface-variant">Nothing here.</CardContent></Card>
+        <Card><CardContent className="p-10 text-center text-sm text-on-surface-variant md:p-10">Nothing here.</CardContent></Card>
       ) : (
         <div className="flex flex-col gap-3">
           {rows.map((r) => {
             const d = r.partner.payoutDetails;
             return (
               <Card key={r.id} data-reward={r.lead?.id ?? `bonus-${r.partner.id}`}>
-                <CardContent className="flex flex-col gap-3 pt-6">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex min-w-0 flex-col">
-                      <span className="text-heading-sm text-on-surface">
-                        {formatInr(Number(r.amount))} ·{" "}
-                        <Link href={`/dashboard/partners/${r.partner.id}`} className="hover:underline">{r.partner.orgName}</Link>
-                      </span>
+                <CardContent className={cn("flex flex-col gap-4", PAD)}>
+                  <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                      <Link href={`/dashboard/partners/${r.partner.id}`} className="text-heading-sm text-on-surface hover:underline">
+                        {r.partner.orgName}
+                      </Link>
                       <span className="text-xs text-on-surface-variant">
                         {r.lead ? (
                           <>
@@ -103,10 +105,13 @@ export default async function RewardsPage({ searchParams }: { searchParams: { st
                         {r.rejectedReason ? ` · ${r.rejectedReason}` : ""}
                       </span>
                     </div>
-                    {status === "PENDING" && <span className="ml-auto"><ApproveReward rewardId={r.id} /></span>}
+                    <div className="flex items-center gap-4">
+                      <span className="text-heading-sm tabular-nums text-on-surface">{formatInr(Number(r.amount))}</span>
+                      {status === "PENDING" && <ApproveReward rewardId={r.id} />}
+                    </div>
                   </div>
                   {status === "APPROVED" && (
-                    <div className="flex flex-col gap-2 rounded-lg bg-surface-container-low p-3 text-sm">
+                    <div className="flex flex-col gap-3 rounded-lg bg-surface-container-low p-4 text-sm">
                       {d ? (
                         <span className="tabular-nums">
                           Pay to <b>{d.accountHolder}</b> · A/c {d.accountNumber} · IFSC {d.ifsc} · PAN {d.pan}
@@ -117,7 +122,11 @@ export default async function RewardsPage({ searchParams }: { searchParams: { st
                       <MarkPaid rewardId={r.id} disabled={!d} />
                     </div>
                   )}
-                  {(status === "PENDING" || status === "APPROVED") && <RejectReward rewardId={r.id} />}
+                  {(status === "PENDING" || status === "APPROVED") && (
+                    <div className="border-t border-outline-variant pt-3">
+                      <RejectReward rewardId={r.id} />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );
