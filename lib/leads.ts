@@ -88,12 +88,6 @@ export type LeadPartner = {
   contactEmail: string;
 };
 
-export type PartnerSummary = LeadPartner & {
-  status: PartnerStatus;
-  leadCount: number;
-  createdAt: string;
-};
-
 export type LeadActivity = {
   id: string;
   kind: ActivityKind;

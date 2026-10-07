@@ -17,7 +17,6 @@ import {
   type LeadPartner,
   type LeadStatus,
   type LeadWebhookEvent,
-  type PartnerSummary,
 } from "./leads";
 
 type LeadWithPartner = LeadRow & { partner: PartnerRow | null };
@@ -161,19 +160,6 @@ export async function getLeadDetail(id: string): Promise<LeadDetail | null> {
     duplicates: duplicateRows.map(toLead),
     webhookEvents: row.webhookEvents.map(toWebhookEvent),
   };
-}
-
-export async function listPartnerSummaries(): Promise<PartnerSummary[]> {
-  const rows = await prisma.partner.findMany({
-    include: { _count: { select: { leads: true } } },
-    orderBy: { createdAt: "asc" },
-  });
-  return rows.map((r) => ({
-    ...toPartner(r),
-    status: r.status,
-    leadCount: r._count.leads,
-    createdAt: r.createdAt.toISOString(),
-  }));
 }
 
 // -----------------------------------------------------------------------------
