@@ -115,3 +115,38 @@ export async function fetchIntegrationHealth(): Promise<IntegrationHealth | null
     return null;
   }
 }
+
+export type RewardSync = {
+  created: number;
+  /** Disbursed leads that will earn once their loan amount is recorded. */
+  awaiting: { leadId: string; name: string; partnerId: string; orgName: string }[];
+};
+
+/**
+ * Asks serverx — the only place rewards are calculated — to create any partner
+ * rewards that are due now (it also does this every minute). Null if serverx is
+ * unreachable: the Rewards page still shows what already exists.
+ */
+export async function syncRewards(partnerId?: string): Promise<RewardSync | null> {
+  if (!isConfigured()) return null;
+  try {
+    const res = await fetch(`${SERVER_BASE_URL}/api/internal/rewards/sync`, {
+      method: "POST",
+      headers: { "x-api-key": INTERNAL_API_KEY, "content-type": "application/json" },
+      body: JSON.stringify(partnerId ? { partner_id: partnerId } : {}),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as {
+      created: number;
+      awaiting: { lead_id: string; name: string; partner_id: string; org_name: string }[];
+    };
+    return {
+      created: body.created,
+      awaiting: body.awaiting.map((a) => ({ leadId: a.lead_id, name: a.name, partnerId: a.partner_id, orgName: a.org_name })),
+    };
+  } catch {
+    return null;
+  }
+}

@@ -77,6 +77,8 @@ export function toLead(row: LeadWithPartner): Lead {
     tenureUnit: row.tenureUnit,
     isDemo: row.isDemo,
     sourceCreatedAt: row.sourceCreatedAt?.toISOString() ?? null,
+    externalRef: row.externalRef,
+    agentRef: row.agentRef,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

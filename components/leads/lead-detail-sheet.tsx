@@ -170,6 +170,8 @@ export function LeadDetailSheet({
             <Section title="Source">
               <Row label="Channel">{SOURCE_LABELS[lead.source]}</Row>
               {lead.lspName && <Row label="LSP">{lead.lspName}</Row>}
+              {lead.externalRef && <Row label="Their reference">{lead.externalRef}</Row>}
+              {lead.agentRef && <Row label="Their agent">{lead.agentRef}</Row>}
               {lead.ondcTransactionId && (
                 <Row label="ONDC transaction">
                   <span className="select-all font-mono text-xs">{lead.ondcTransactionId}</span>

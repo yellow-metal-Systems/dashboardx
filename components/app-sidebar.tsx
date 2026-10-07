@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, Inbox, LayoutDashboard, LogOut, Settings } from "lucide-react";
+import { Building2, Inbox, LayoutDashboard, LogOut, Settings, Wallet } from "lucide-react";
 
 import { signOut } from "@/lib/auth/actions";
 import {
@@ -19,7 +19,8 @@ import {
 
 const NAV_ITEMS = [
   { title: "Leads", href: "/dashboard", icon: Inbox, prefixes: ["/dashboard/leads"] },
-  { title: "Partners", href: "/dashboard/partners", icon: Building2, prefixes: [] },
+  { title: "Partners", href: "/dashboard/partners", icon: Building2, prefixes: ["/dashboard/partners/"] },
+  { title: "Rewards", href: "/dashboard/rewards", icon: Wallet, prefixes: [] },
   { title: "Overview", href: "/dashboard/overview", icon: LayoutDashboard, prefixes: [] },
 ];
 

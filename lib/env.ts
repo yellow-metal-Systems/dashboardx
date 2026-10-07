@@ -52,3 +52,6 @@ export const SERVER_BASE_URL = process.env.SERVER_BASE_URL?.trim() || "http://lo
  * server-bridge fetches simply do not render, and nothing else is affected.
  */
 export const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY?.trim() ?? "";
+
+/** LeadBridge, the partner app: invite links sent to partners point here. */
+export const LEADBRIDGE_URL = process.env.LEADBRIDGE_URL?.trim() || "http://localhost:3200";

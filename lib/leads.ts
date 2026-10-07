@@ -168,6 +168,9 @@ export type Lead = {
   tenureUnit: string;
   isDemo: boolean;
   sourceCreatedAt: string | null;
+  /** Organisation-API leads: the organisation's own id for the lead, and its agent. */
+  externalRef?: string | null;
+  agentRef?: string | null;
   createdAt: string;
   updatedAt: string;
 };

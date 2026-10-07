@@ -142,10 +142,19 @@ model Lead {
   isDemo          Boolean   @default(false) @map("is_demo")
   sourceCreatedAt DateTime? @map("source_created_at") @db.Timestamptz(3)
 
+  // LeadBridge partner app / organisation API (serverx migrations 3-4)
+  submittedByUserId String?   @map("submitted_by_user_id")
+  borrowerConsentAt DateTime? @map("borrower_consent_at") @db.Timestamptz(3)
+  consentVersion    String?   @map("consent_version")
+  externalRef       String?   @map("external_ref")
+  agentRef          String?   @map("agent_ref")
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   partner       Partner?           @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+  submittedBy   PartnerUser?       @relation(fields: [submittedByUserId], references: [id], onDelete: SetNull)
+  reward        PartnerReward?
   activities    LeadActivity[]
   webhookEvents WebhookEvent[]
   statusOutbox  LeadStatusOutbox[]
@@ -166,14 +175,21 @@ model Lead {
 
 model Partner {
   id           String        @id @default(cuid())
-  orgName      String        @map("org_name")
-  contactEmail String        @map("contact_email")
-  status       PartnerStatus @default(invited)
+  orgName       String        @map("org_name")
+  contactEmail  String        @map("contact_email")
+  contactMobile String?       @map("contact_mobile")
+  status        PartnerStatus @default(invited)
+  type          PartnerType   @default(INDIVIDUAL)
+  isOndc        Boolean       @default(false) @map("is_ondc")
   isDemo       Boolean       @default(false) @map("is_demo")
   createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  leads Lead[]
+  leads         Lead[]
+  users         PartnerUser[]
+  apiKeys       PartnerApiKey[]
+  rewards       PartnerReward[]
+  payoutDetails PartnerPayoutDetails?
 
   @@index([contactEmail])
   @@map("partners")
@@ -269,4 +285,138 @@ model AdminUser {
   updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@map("admin_users")
+}
+
+// -----------------------------------------------------------------------------
+// Partners, their logins, API keys and rewards (serverx migrations 3-5).
+// Copied from LeadBridge's schema, which maps the same columns with the same
+// field names, so the moved code in lib/partners works unchanged. Partner
+// logins live in LeadBridge (the partner app); LeadDesk onboards partners,
+// issues invites and API keys, and approves and pays rewards. Rewards are
+// CALCULATED only by serverx (RewardService).
+// -----------------------------------------------------------------------------
+
+enum PartnerType {
+  ORGANISATION
+  INDIVIDUAL
+}
+
+model PartnerUser {
+  id           String        @id @default(cuid())
+  partnerId    String        @map("partner_id")
+  name         String
+  mobile       String        @unique @map("mobile_number")
+  email        String?
+  passwordHash String?       @map("password_hash")
+  status       PartnerStatus @default(invited)
+  lastLoginAt  DateTime?     @map("last_login_at") @db.Timestamptz(3)
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  partner Partner         @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+  invites PartnerInvite[]
+  leads   Lead[]
+
+  @@map("partner_users")
+}
+
+model PartnerInvite {
+  id            String    @id @default(cuid())
+  partnerUserId String    @map("partner_user_id")
+  tokenHash     String    @unique @map("token_hash")
+  expiresAt     DateTime  @map("expires_at") @db.Timestamptz(3)
+  usedAt        DateTime? @map("used_at") @db.Timestamptz(3)
+  createdBy     String?   @map("created_by")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user PartnerUser @relation(fields: [partnerUserId], references: [id], onDelete: Cascade)
+
+  @@map("partner_invites")
+}
+
+model PartnerApiKey {
+  id         String    @id @default(cuid())
+  partnerId  String    @map("partner_id")
+  label      String
+  keyPrefix  String    @unique @map("key_prefix")
+  keyHash    String    @map("key_hash")
+  createdBy  String?   @map("created_by")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(3)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(3)
+
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@map("partner_api_keys")
+}
+
+enum RewardKind {
+  LOAN
+  MONTHLY_BONUS
+}
+
+enum RewardStatus {
+  PENDING
+  APPROVED
+  PAID
+  REJECTED
+}
+
+model PartnerReward {
+  id             String       @id @default(cuid())
+  kind           RewardKind   @default(LOAN)
+  /// LOAN only.
+  leadId         String?      @unique @map("lead_id")
+  partnerId      String       @map("partner_id")
+  /// MONTHLY_BONUS only: first day of the month (IST).
+  periodMonth    DateTime?    @map("period_month") @db.Date
+  /// LOAN: the disbursed amount. MONTHLY_BONUS: the month's disbursed total.
+  baseAmount     Decimal      @map("base_amount") @db.Decimal(14, 2)
+  /// 1.000 = 1%
+  percent        Decimal      @db.Decimal(6, 3)
+  amount         Decimal      @db.Decimal(12, 2)
+  status         RewardStatus @default(PENDING)
+  disbursedAt    DateTime     @map("disbursed_at") @db.Timestamptz(3)
+  approvedAt     DateTime?    @map("approved_at") @db.Timestamptz(3)
+  approvedBy     String?      @map("approved_by")
+  paidAt         DateTime?    @map("paid_at") @db.Timestamptz(3)
+  paidBy         String?      @map("paid_by")
+  paymentRef     String?      @map("payment_ref")
+  tdsAmount      Decimal?     @map("tds_amount") @db.Decimal(12, 2)
+  rejectedAt     DateTime?    @map("rejected_at") @db.Timestamptz(3)
+  rejectedReason String?      @map("rejected_reason")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  lead    Lead?   @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+
+  @@unique([partnerId, periodMonth])
+  @@map("partner_rewards")
+}
+
+model RewardRate {
+  id             String   @id @default(cuid())
+  basePercent    Decimal  @map("base_percent") @db.Decimal(6, 3)
+  bonusPercent   Decimal  @map("bonus_percent") @db.Decimal(6, 3)
+  bonusThreshold Decimal  @map("bonus_threshold") @db.Decimal(14, 2)
+  effectiveFrom  DateTime @map("effective_from") @db.Timestamptz(3)
+  createdBy     String?  @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@map("reward_rates")
+}
+
+model PartnerPayoutDetails {
+  partnerId     String   @id @map("partner_id")
+  pan           String
+  accountHolder String   @map("account_holder")
+  accountNumber String   @map("account_number")
+  ifsc          String
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@map("partner_payout_details")
 }
