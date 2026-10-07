@@ -11,12 +11,12 @@ const badgeVariants = cva(
         default:
           "border-transparent bg-black-solid font-bold text-white hover:bg-black-solid/90",
         success:
-          "border-transparent bg-success-solid font-bold text-white hover:bg-success-solid/90",
+          "border-transparent bg-success-soft font-bold text-on-success-soft hover:bg-success-soft",
         destructive:
-          "border-transparent bg-error-solid font-bold text-white hover:bg-error-solid/90",
-        grey: "border-transparent bg-grey-solid font-bold text-white hover:bg-grey-solid/90",
+          "border-transparent bg-error-soft font-bold text-on-error-soft hover:bg-error-soft",
+        grey: "border-transparent bg-secondary-container font-bold text-on-secondary-container hover:bg-secondary-container",
         secondary:
-          "rounded-sm border-transparent bg-secondary-container font-extrabold text-on-secondary-container",
+          "border-transparent bg-secondary-container font-extrabold text-on-secondary-container",
         outline: "text-foreground",
       },
     },

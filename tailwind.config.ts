@@ -124,6 +124,22 @@ const config: Config = {
         "grey-solid": "var(--grey-solid)",
         "black-solid": "var(--black-solid)",
         count: "var(--count)",
+
+        // Draft 3 additions (see globals.css)
+        raised: "var(--raised)",
+        "success-soft": "var(--success-soft)",
+        "on-success-soft": "var(--on-success-soft)",
+        "error-soft": "var(--error-soft)",
+        "on-error-soft": "var(--on-error-soft)",
+        "pending-soft": "var(--pending-soft)",
+        "on-pending-soft": "var(--on-pending-soft)",
+      },
+      boxShadow: {
+        e1: "var(--shadow-1)",
+        e2: "var(--shadow-2)",
+        e3: "var(--shadow-3)",
+        button: "var(--shadow-button)",
+        field: "var(--shadow-field)",
       },
       borderRadius: {
         sm: "0.25rem",

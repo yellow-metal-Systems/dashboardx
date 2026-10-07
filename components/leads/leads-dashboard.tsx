@@ -295,7 +295,7 @@ export function LeadsDashboard({ initialLeads, partners }: Props) {
                       <TableCell className="font-mono text-xs text-on-surface-variant">
                         {leadRef(lead)}
                       </TableCell>
-                      <TableCell className="font-medium text-on-surface">
+                      <TableCell className="whitespace-nowrap font-medium text-on-surface">
                         <button
                           type="button"
                           onClick={(e) => {
@@ -324,7 +324,7 @@ export function LeadsDashboard({ initialLeads, partners }: Props) {
                           {SOURCE_LABELS[lead.source]}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="whitespace-nowrap">
                         {lead.partner?.orgName ?? (
                           <span className="text-on-surface-variant">—</span>
                         )}
@@ -342,7 +342,7 @@ export function LeadsDashboard({ initialLeads, partners }: Props) {
                           <SelectTrigger
                             aria-label={`Status for ${lead.name}`}
                             className={cn(
-                              "h-8 w-40 border-transparent",
+                              "h-8 w-40 !rounded-full border-transparent !shadow-none disabled:opacity-100",
                               statusBadgeClass(lead.status)
                             )}
                           >

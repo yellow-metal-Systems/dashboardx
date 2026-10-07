@@ -69,7 +69,7 @@ export function LeadFilters({ filters, onChange, partners }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-md border border-outline-variant bg-surface-container-low p-3">
+    <div className="flex flex-col gap-3 rounded-lg bg-surface-container-low p-3">
       <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
         <span className="hidden self-center pr-1 text-xs font-medium text-on-surface-variant md:inline">
           Filter

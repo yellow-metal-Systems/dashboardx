@@ -68,7 +68,7 @@ export function statusLabel(status: string): string {
     .join(" ");
 }
 
-export type LeadSource = "PARTNER" | "AARTHIKLABS";
+export type LeadSource = "PARTNER" | "AARTHIKLABS" | "PARTNER_API";
 export type AcceptanceState = "NA" | "ACCEPTED" | "EXPIRED_UNACCEPTED";
 export type BranchManagerStatus = "NOT_SENT" | "SENT" | "CONFIRMED" | "DECLINED";
 export type PartnerStatus = "invited" | "active" | "disabled";
@@ -172,7 +172,7 @@ export type Lead = {
   updatedAt: string;
 };
 
-export const LEAD_SOURCES: LeadSource[] = ["PARTNER", "AARTHIKLABS"];
+export const LEAD_SOURCES: LeadSource[] = ["PARTNER", "AARTHIKLABS", "PARTNER_API"];
 export const ACCEPTANCE_STATES: AcceptanceState[] = ["NA", "ACCEPTED", "EXPIRED_UNACCEPTED"];
 export const BRANCH_MANAGER_STATUSES: BranchManagerStatus[] = [
   "NOT_SENT",
@@ -184,6 +184,7 @@ export const BRANCH_MANAGER_STATUSES: BranchManagerStatus[] = [
 export const SOURCE_LABELS: Record<LeadSource, string> = {
   PARTNER: "Partner",
   AARTHIKLABS: "AarthikLabs / ONDC",
+  PARTNER_API: "Organisation API",
 };
 
 /**
@@ -229,9 +230,10 @@ export const BRANCH_MANAGER_LABELS: Record<BranchManagerStatus, string> = {
 // inherit its background from the table row on hover (white bg + white text
 // = invisible).
 const NEUTRAL_BADGE =
-  "bg-secondary-container font-extrabold text-on-secondary-container hover:bg-secondary-container";
-const SUCCESS_BADGE = "bg-success-solid font-bold text-white hover:bg-success-solid";
-const ERROR_BADGE = "bg-error-solid font-bold text-white hover:bg-error-solid";
+  "bg-secondary-container font-bold text-on-secondary-container hover:bg-secondary-container";
+// Soft tints (Draft 3): coloured text on a pale fill reads as calm in a dense table.
+const SUCCESS_BADGE = "bg-success-soft font-bold text-on-success-soft hover:bg-success-soft";
+const ERROR_BADGE = "bg-error-soft font-bold text-on-error-soft hover:bg-error-soft";
 
 export const STATUS_BADGE_CLASSES: Record<LeadStatus, string> = {
   LEAD_CREATED: NEUTRAL_BADGE,

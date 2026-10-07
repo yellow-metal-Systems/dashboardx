@@ -46,6 +46,8 @@ datasource db {
 enum LeadSource {
   PARTNER
   AARTHIKLABS
+  // An organisation via LeadBridge's /api/v1 (serverx migration 4).
+  PARTNER_API
 }
 
 enum PartnerStatus {

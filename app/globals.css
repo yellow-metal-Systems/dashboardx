@@ -3,30 +3,32 @@
 @tailwind utilities;
 
 /*
-  YellowMetal LeadDesk — matches the Yellow Metal LMS design system
-  (see LMS-DESIGN-SYSTEM.md): black/white/grey surfaces, blue links,
-  green/red/grey/black tags. Light-only by design.
+  YellowMetal LeadDesk — the Yellow Metal LMS design system (black text, blue
+  links, LMS type scale, dense tables) softened with LeadBridge's Draft 3 look:
+  one warm neutral surface, off-white cards with layered shadows and a top
+  highlight, rounded corners, pill buttons and soft tinted status pills.
+  Light-only by design. Change values here, not in components.
 */
 :root {
-  --surface: #e2e2e2;
-  --surface-dim: #eeeeee;
+  --surface: #ebe9e5;
+  --surface-dim: #e6e3de;
   --surface-bright: #ffffff;
-  --surface-container-lowest: #ffffff;
-  --surface-container-low: #f6f6f6;
-  --surface-container: #f6f6f6;
-  --surface-container-high: #f6f6f6;
-  --surface-container-highest: #eeeeee;
+  --surface-container-lowest: #f6f5f2;
+  --surface-container-low: #f1efeb;
+  --surface-container: #f1efeb;
+  --surface-container-high: #ece9e4;
+  --surface-container-highest: #e6e3de;
   --on-surface: #000000;
   --on-surface-variant: #545454;
-  --outline: #e2e2e2;
-  --outline-variant: #e2e2e2;
+  --outline: rgba(22, 22, 21, 0.08);
+  --outline-variant: rgba(22, 22, 21, 0.08);
   --primary: #000000;
   --on-primary: #ffffff;
   --primary-container: #eeeeee;
   --on-primary-container: #000000;
   --secondary: #eeeeee;
   --on-secondary: #000000;
-  --secondary-container: #f3f3f3;
+  --secondary-container: #e9e6e1;
   --on-secondary-container: #5e5e5e;
   --success: #048848;
   --on-success: #ffffff;
@@ -36,7 +38,7 @@
   --on-error: #ffffff;
   --error-container: #fff0ee;
   --on-error-container: #bb032a;
-  --background: #e2e2e2;
+  --background: #ebe9e5;
   --on-background: #000000;
 
   /* Roles the LMS doc names that the MD3 surface/success/error pairs above
@@ -54,6 +56,25 @@
   --grey-solid: #5e5e5e;
   --black-solid: #000000;
   --count: #ff3b30;
+
+  /* Draft 3 additions: soft status tints (text on tint), the raised field
+     surface, and one elevation scale with a single light source. */
+  --raised: #fbfaf8;
+  --success-soft: #e3efe6;
+  --on-success-soft: #2f7d4f;
+  --error-soft: #f4e4e1;
+  --on-error-soft: #b23a2e;
+  --pending-soft: #f1e9d3;
+  --on-pending-soft: #8a6a12;
+  --shadow-1: inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 0 0 0.5px rgba(22, 22, 21, 0.06),
+    0 1px 2px rgba(22, 22, 21, 0.05), 0 2px 4px rgba(22, 22, 21, 0.03);
+  --shadow-2: inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 0 0 0.5px rgba(22, 22, 21, 0.06),
+    0 1px 2px rgba(22, 22, 21, 0.05), 0 4px 8px rgba(22, 22, 21, 0.05), 0 8px 16px rgba(22, 22, 21, 0.04);
+  --shadow-3: 0 0 0 0.5px rgba(22, 22, 21, 0.12), 0 2px 4px rgba(22, 22, 21, 0.08),
+    0 8px 16px rgba(22, 22, 21, 0.1), 0 24px 48px rgba(22, 22, 21, 0.12);
+  --shadow-button: 0 0 0 0.5px rgba(22, 22, 21, 0.2), inset 0 0 0 1px rgba(255, 255, 255, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 1px 2px rgba(22, 22, 21, 0.08), 0 2px 4px rgba(22, 22, 21, 0.05);
+  --shadow-field: inset 0 1px 2px rgba(22, 22, 21, 0.06), inset 0 0 0 1px rgba(22, 22, 21, 0.08);
 
   /* shadcn/ui semantic aliases, mapped onto the brand tokens above */
   --foreground: var(--on-background);
@@ -73,14 +94,14 @@
   --input: var(--outline-variant);
   --ring: var(--primary);
 
-  --sidebar-background: #ffffff;
+  --sidebar-background: #ebe9e5;
   --sidebar-foreground: #000000;
   --sidebar-muted: #868686;
   --sidebar-primary: #000000;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f6f6f6;
+  --sidebar-accent: #fbfaf8;
   --sidebar-accent-foreground: #000000;
-  --sidebar-border: #e2e2e2;
+  --sidebar-border: transparent;
   --sidebar-ring: #000000;
 }
 
@@ -89,7 +110,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
   }
 }
 

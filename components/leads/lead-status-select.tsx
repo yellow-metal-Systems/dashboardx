@@ -77,7 +77,9 @@ export function LeadStatusSelect({ leadId, leadName, status, className }: Props)
       <Select value={value} onValueChange={change} disabled={isPending || locked}>
         <SelectTrigger
           aria-label={`Status for ${leadName}`}
-          className={cn("h-9 border-transparent", statusBadgeClass(value), className)}
+          // "!" because tailwind-merge does not know the custom shadow-* names, and a
+          // final (disabled) status should read at full strength, not faded.
+          className={cn("h-9 !rounded-full border-transparent !shadow-none disabled:opacity-100", statusBadgeClass(value), className)}
         >
           <SelectValue>{statusLabel(value)}</SelectValue>
         </SelectTrigger>

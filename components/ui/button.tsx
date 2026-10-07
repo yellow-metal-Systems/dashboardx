@@ -5,18 +5,21 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded text-sm leading-5 font-extrabold transition-all duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm leading-5 font-extrabold transition-all duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-on-primary hover:bg-primary/90",
+        // Light raised (Draft 3) — chosen over a flat black fill.
+        default: "bg-gradient-to-b from-[#fefdfc] to-[#f5f4f1] text-on-surface shadow-button hover:to-[#eeece8]",
+        // Solid dark, for the one strongest action on a screen.
+        dark: "bg-gradient-to-b from-[#2b2b29] to-[#161615] text-white shadow-button hover:to-[#000000]",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+          "bg-raised text-on-surface shadow-button hover:bg-surface-container-low",
         secondary: "bg-secondary text-on-secondary hover:bg-secondary/80",
         white:
-          "border border-outline-variant bg-white text-on-surface hover:bg-surface-container-high",
+          "bg-raised text-on-surface shadow-button hover:bg-surface-container-low",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "font-semibold text-link underline-offset-4 hover:text-link-hover hover:underline",
       },

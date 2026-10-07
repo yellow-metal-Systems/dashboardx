@@ -27,7 +27,7 @@ export async function MaxEligibleLoan({
   const gold = await fetchGoldInsights(leadId);
 
   return (
-    <div className="mt-2 rounded-lg border border-outline-variant bg-surface-container-low p-4">
+    <div className="mt-2 rounded-lg bg-surface-container-low p-4">
       <p className="text-label-sm uppercase tracking-widest text-label">
         Maximum eligible loan
       </p>
@@ -68,7 +68,7 @@ export async function MaxEligibleLoan({
 
 export function MaxEligibleLoanSkeleton() {
   return (
-    <div className="mt-2 animate-pulse rounded-lg border border-outline-variant bg-surface-container-low p-4">
+    <div className="mt-2 animate-pulse rounded-lg bg-surface-container-low p-4">
       <p className="text-label-sm uppercase tracking-widest text-label">
         Maximum eligible loan
       </p>

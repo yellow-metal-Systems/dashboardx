@@ -206,7 +206,7 @@ export function LeadDetailSheet({
                         <button
                           type="button"
                           onClick={() => onSelectLead(d.id)}
-                          className="flex w-full items-center justify-between gap-3 rounded border border-outline-variant bg-surface-container-low px-3 py-2 text-left text-sm hover:bg-surface-container focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          className="flex w-full items-center justify-between gap-3 rounded-md bg-surface-container-low px-3 py-2 text-left text-sm hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         >
                           <span className="flex min-w-0 flex-col">
                             <span className="font-mono text-[11px] text-on-surface-variant">
@@ -265,7 +265,7 @@ export function LeadDetailSheet({
                   <SelectTrigger
                     aria-label={`Status for ${lead.name}`}
                     className={cn(
-                      "h-8 w-40 border-transparent",
+                      "h-8 w-40 !rounded-full border-transparent !shadow-none disabled:opacity-100",
                       statusBadgeClass(lead.status)
                     )}
                   >
