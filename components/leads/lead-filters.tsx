@@ -18,10 +18,8 @@ import {
   ACCEPTANCE_STATES,
   BRANCH_MANAGER_LABELS,
   BRANCH_MANAGER_STATUSES,
-  LEAD_SOURCES,
   LEAD_STATUSES,
   statusLabel,
-  SOURCE_LABELS,
   type LeadPartner,
 } from "@/lib/leads";
 import {
@@ -177,36 +175,18 @@ export function LeadFilters({ filters, onChange, partners }: Props) {
           id="more-filters"
           className="flex flex-col gap-3 border-t border-outline-variant pt-3 md:flex-row md:flex-wrap md:items-end"
         >
-          <FilterField id="f-source" label="Source">
+          <FilterField id="f-new-customer" label="New customer">
             <Select
-              value={filters.source}
-              onValueChange={(v) => set("source", v as Filters["source"])}
+              value={filters.newCustomer}
+              onValueChange={(v) => set("newCustomer", v as Filters["newCustomer"])}
             >
-              <SelectTrigger id="f-source" className="h-8 md:w-44">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All sources</SelectItem>
-                {LEAD_SOURCES.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {SOURCE_LABELS[s]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FilterField>
-          <FilterField id="f-duplicate" label="Duplicates">
-            <Select
-              value={filters.duplicate}
-              onValueChange={(v) => set("duplicate", v as Filters["duplicate"])}
-            >
-              <SelectTrigger id="f-duplicate" className="h-8 md:w-40">
+              <SelectTrigger id="f-new-customer" className="h-8 md:w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
-                <SelectItem value="only">Duplicates only</SelectItem>
-                <SelectItem value="none">Non-duplicates only</SelectItem>
+                <SelectItem value="yes">Yes</SelectItem>
+                <SelectItem value="no">No</SelectItem>
               </SelectContent>
             </Select>
           </FilterField>

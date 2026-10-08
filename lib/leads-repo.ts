@@ -34,7 +34,7 @@ function toPartner(row: PartnerRow): LeadPartner {
   return { id: row.id, orgName: row.orgName, contactEmail: row.contactEmail };
 }
 
-export function toLead(row: LeadWithPartner): Lead {
+export function toLead(row: LeadWithPartner, isNewCustomer: boolean): Lead {
   return {
     id: row.id,
     leadNo: row.leadNo,
@@ -66,6 +66,7 @@ export function toLead(row: LeadWithPartner): Lead {
     acceptanceState: row.acceptanceState,
     status: row.status,
     duplicateFlag: row.duplicateFlag,
+    isNewCustomer,
     branchManagerStatus: row.branchManagerStatus,
     loanConfirmedAmount: num(row.loanConfirmedAmount),
     loanConfirmedAt: row.loanConfirmedAt?.toISOString() ?? null,
@@ -122,7 +123,27 @@ export async function listLeads(): Promise<Lead[]> {
     // than letting one page load grow without limit.
     take: 1000,
   });
-  return rows.map(toLead);
+  const firsts = await firstLeadIds(rows.map((r) => r.mobile));
+  return rows.map((r) => toLead(r, firsts.has(r.id)));
+}
+
+/**
+ * The first lead ever for each mobile (earliest created_at, then lowest id —
+ * the same rule partner rewards use), across the whole table rather than just
+ * the rows on screen.
+ *
+ * "New customer" stand-in: when the LMS can say who is already a YellowMetal
+ * customer, serverx will record its answer on the lead at submission and this is
+ * the one place to read it instead.
+ */
+export async function firstLeadIds(mobiles: string[]): Promise<Set<string>> {
+  const unique = Array.from(new Set(mobiles));
+  if (unique.length === 0) return new Set();
+  const rows = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT DISTINCT ON (mobile_number) id FROM leads
+    WHERE mobile_number = ANY(${unique}::text[])
+    ORDER BY mobile_number, created_at, id`;
+  return new Set(rows.map((r) => r.id));
 }
 
 export async function listPartners(): Promise<LeadPartner[]> {
@@ -154,10 +175,11 @@ export async function getLeadDetail(id: string): Promise<LeadDetail | null> {
     orderBy: { createdAt: "desc" },
   });
 
+  const firsts = await firstLeadIds([row.mobile]);
   return {
-    lead: toLead(row),
+    lead: toLead(row, firsts.has(row.id)),
     activities: row.activities.map(toActivity),
-    duplicates: duplicateRows.map(toLead),
+    duplicates: duplicateRows.map((d) => toLead(d, firsts.has(d.id))),
     webhookEvents: row.webhookEvents.map(toWebhookEvent),
   };
 }

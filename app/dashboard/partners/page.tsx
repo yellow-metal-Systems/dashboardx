@@ -47,7 +47,7 @@ export default async function PartnersPage() {
                   <TableHead>Partner</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Logins</TableHead>
+                  <TableHead>Users</TableHead>
                   <TableHead className="text-right">Leads</TableHead>
                   <TableHead>API keys</TableHead>
                   <TableHead>Added</TableHead>

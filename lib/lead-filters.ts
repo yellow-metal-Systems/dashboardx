@@ -3,11 +3,10 @@ import {
   type AcceptanceState,
   type BranchManagerStatus,
   type Lead,
-  type LeadSource,
   type LeadStatus,
 } from "./leads";
 
-export type DuplicateFilter = "all" | "only" | "none";
+export type NewCustomerFilter = "all" | "yes" | "no";
 
 export type LeadFilters = {
   search: string;
@@ -15,8 +14,7 @@ export type LeadFilters = {
   minAmount: string;
   maxAmount: string;
   status: LeadStatus | "all";
-  source: LeadSource | "all";
-  duplicate: DuplicateFilter;
+  newCustomer: NewCustomerFilter;
   acceptanceState: AcceptanceState | "all";
   branchManagerStatus: BranchManagerStatus | "all";
   partnerId: string | "all";
@@ -30,8 +28,7 @@ export const EMPTY_FILTERS: LeadFilters = {
   minAmount: "",
   maxAmount: "",
   status: "all",
-  source: "all",
-  duplicate: "all",
+  newCustomer: "all",
   acceptanceState: "all",
   branchManagerStatus: "all",
   partnerId: "all",
@@ -80,9 +77,8 @@ export function applyLeadFilters(leads: Lead[], f: LeadFilters): Lead[] {
     if (max !== null && (amount === null || amount > max)) return false;
 
     if (f.status !== "all" && lead.status !== f.status) return false;
-    if (f.source !== "all" && lead.source !== f.source) return false;
-    if (f.duplicate === "only" && !lead.duplicateFlag) return false;
-    if (f.duplicate === "none" && lead.duplicateFlag) return false;
+    if (f.newCustomer === "yes" && !lead.isNewCustomer) return false;
+    if (f.newCustomer === "no" && lead.isNewCustomer) return false;
     if (f.acceptanceState !== "all" && lead.acceptanceState !== f.acceptanceState) {
       return false;
     }

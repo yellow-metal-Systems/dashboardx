@@ -48,22 +48,21 @@ describe("applyLeadFilters", () => {
     expect(b.length).toBe(a.length);
   });
 
-  it("filters duplicates both ways", () => {
-    const only = applyLeadFilters(all, { ...EMPTY_FILTERS, duplicate: "only" });
-    const none = applyLeadFilters(all, { ...EMPTY_FILTERS, duplicate: "none" });
-    expect(only.every((l) => l.duplicateFlag)).toBe(true);
-    expect(none.every((l) => !l.duplicateFlag)).toBe(true);
-    expect(only.length + none.length).toBe(all.length);
+  it("filters new customers both ways", () => {
+    const yes = applyLeadFilters(all, { ...EMPTY_FILTERS, newCustomer: "yes" });
+    const no = applyLeadFilters(all, { ...EMPTY_FILTERS, newCustomer: "no" });
+    expect(yes.every((l) => l.isNewCustomer)).toBe(true);
+    expect(no.map((l) => l.id)).toEqual(["l1"]);
+    expect(yes.length + no.length).toBe(all.length);
   });
 
-  it("filters by source and combines filters", () => {
+  it("combines filters", () => {
     const combined = applyLeadFilters(all, {
       ...EMPTY_FILTERS,
-      source: "AARTHIKLABS",
+      newCustomer: "yes",
       acceptanceState: "ACCEPTED",
     });
-    expect(combined.every((l) => l.source === "AARTHIKLABS")).toBe(true);
-    expect(combined.every((l) => l.acceptanceState === "ACCEPTED")).toBe(true);
+    expect(combined.every((l) => l.isNewCustomer && l.acceptanceState === "ACCEPTED")).toBe(true);
     expect(combined).toHaveLength(1);
   });
 
@@ -96,7 +95,7 @@ describe("countActiveFilters", () => {
   it("counts each non-default filter once", () => {
     expect(countActiveFilters({ ...EMPTY_FILTERS, status: "DISBURSED" })).toBe(1);
     expect(
-      countActiveFilters({ ...EMPTY_FILTERS, status: "DISBURSED", source: "PARTNER" })
+      countActiveFilters({ ...EMPTY_FILTERS, status: "DISBURSED", newCustomer: "no" })
     ).toBe(2);
   });
 });

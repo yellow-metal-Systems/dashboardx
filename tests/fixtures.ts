@@ -49,6 +49,7 @@ export function makeLead(overrides: Partial<Lead> & Required_): Lead {
     acceptanceState: "NA",
     status: "LEAD_CREATED",
     duplicateFlag: false,
+    isNewCustomer: true,
     branchManagerStatus: "NOT_SENT",
     loanConfirmedAmount: null,
     loanConfirmedAt: null,
@@ -77,6 +78,8 @@ export const LEADS: Lead[] = [
     loanAmount: 85000,
     partner: PARTNER_A,
     duplicateFlag: true,
+    // Same mobile as l7, which came first.
+    isNewCustomer: false,
     createdAt: "2026-09-16T09:12:00+05:30",
   }),
   makeLead({

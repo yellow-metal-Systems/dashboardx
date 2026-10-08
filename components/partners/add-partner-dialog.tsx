@@ -77,7 +77,7 @@ export function AddPartnerDialog() {
                 <FieldContent><Input id="p-name" name="personName" required /></FieldContent>
               </Field>
               <Field>
-                <FieldLabel htmlFor="p-mobile">Mobile (their login)</FieldLabel>
+                <FieldLabel htmlFor="p-mobile">Mobile (used to sign in)</FieldLabel>
                 <FieldContent><Input id="p-mobile" name="mobile" inputMode="tel" placeholder="98765 43210" required /></FieldContent>
               </Field>
               <Field>

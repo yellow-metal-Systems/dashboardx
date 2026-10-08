@@ -17,6 +17,8 @@ const badgeVariants = cva(
         grey: "border-transparent bg-secondary-container font-bold text-on-secondary-container hover:bg-secondary-container",
         secondary:
           "border-transparent bg-secondary-container font-extrabold text-on-secondary-container",
+        // Soft amber pill, as in a "Building" status badge; pair with `dot`.
+        pending: "border-transparent bg-pending-soft font-bold text-on-pending-soft hover:bg-pending-soft",
         outline: "text-foreground",
       },
     },
@@ -28,11 +30,22 @@ const badgeVariants = cva(
 
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
+    VariantProps<typeof badgeVariants> {
+  /** A small solid dot before the text — a status indicator. */
+  dot?: boolean
+}
 
-function Badge({ className, variant, ...props }: BadgeProps) {
+function Badge({ className, variant, dot, children, ...props }: BadgeProps) {
   return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+    <div className={cn(badgeVariants({ variant }), dot && "gap-1.5", className)} {...props}>
+      {dot && (
+        <span
+          aria-hidden="true"
+          className={cn("size-1.5 shrink-0 rounded-full", variant === "pending" ? "bg-warning" : "bg-current")}
+        />
+      )}
+      {children}
+    </div>
   )
 }
 

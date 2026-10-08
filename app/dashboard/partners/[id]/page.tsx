@@ -53,7 +53,10 @@ export default async function PartnerPage({ params }: { params: { id: string } }
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader><CardTitle>Logins</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>Users</CardTitle>
+            <p className="text-sm text-on-surface-variant">People who can sign in to the LeadBridge app</p>
+          </CardHeader>
           <CardContent className="flex flex-col gap-4">
             {p.users.map((u) => (
               <div key={u.id} className="flex flex-col gap-2 rounded-lg bg-surface-container-low p-3">
@@ -62,7 +65,7 @@ export default async function PartnerPage({ params }: { params: { id: string } }
                   <span className="tabular-nums text-on-surface-variant">{u.mobile}</span>
                   <Badge className={cn("border-transparent", PARTNER_STATUS_BADGE_CLASSES[u.status])}>{STATUS_LABEL[u.status] ?? u.status}</Badge>
                   <span className="text-xs text-on-surface-variant">
-                    {u.lastLoginAt ? `last login ${formatDate(u.lastLoginAt.toISOString())}` : "never logged in"}
+                    {u.lastLoginAt ? `last signed in ${formatDate(u.lastLoginAt.toISOString())}` : "never signed in"}
                   </span>
                 </div>
                 {p.status !== "disabled" && <ResendInvite partnerUserId={u.id} name={u.name} />}

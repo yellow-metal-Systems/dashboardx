@@ -87,7 +87,7 @@ export async function createPartnerWithInvite(input: {
     });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-      throw new PartnerAccountError("A partner login with that mobile number already exists.");
+      throw new PartnerAccountError("A user with that mobile number already exists.");
     }
     throw err;
   }
@@ -136,7 +136,7 @@ export async function onboardPartner(input: {
 
 export async function resendInvite(partnerUserId: string, staffEmail: string) {
   const user = await prisma.partnerUser.findUnique({ where: { id: partnerUserId }, include: { partner: true } });
-  if (!user) throw new AdminError("Login not found.");
+  if (!user) throw new AdminError("User not found.");
   if (user.status === "disabled" || user.partner.status === "disabled") {
     throw new AdminError("Turn the partner back on before sending a new link.");
   }

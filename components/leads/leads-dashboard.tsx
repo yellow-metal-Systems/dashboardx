@@ -32,13 +32,13 @@ import {
 import { cn } from "@/lib/utils";
 import {
   LEAD_STATUSES,
-  SOURCE_LABELS,
   isTerminalStatus,
   parseLeadStatus,
   statusBadgeClass,
   statusLabel,
-  formatDate,
+  formatDateTime,
   formatInr,
+  submittedLabel,
   leadRef,
   type Lead,
   type LeadPartner,
@@ -71,6 +71,23 @@ export function LeadsDashboard({ initialLeads, partners }: Props) {
   const pendingRef = useRef<string | null>(null);
   pendingRef.current = pendingId;
 
+  // Leads that arrived while this page was open (via the poll below). Seeded with
+  // the first render, so only genuinely new arrivals get the "New" badge; opening
+  // a lead clears its badge. Not persisted: it means "since you've been looking".
+  const seenIdsRef = useRef<Set<string>>(new Set(initialLeads.map((l) => l.id)));
+  const [freshIds, setFreshIds] = useState<Set<string>>(() => new Set());
+
+  function openLead(id: string | null) {
+    setSelectedId(id);
+    if (id === null) return;
+    setFreshIds((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }
+
   // Leads also arrive from AarthikLabs posting to the partner API, and nothing
   // tells this browser about those. Poll while the tab is visible, and pause
   // while a status change is in flight.
@@ -95,6 +112,11 @@ export function LeadsDashboard({ initialLeads, partners }: Props) {
   // The row currently being mutated is preserved, so a server render that lands
   // mid-flight cannot briefly flash the old status back.
   useEffect(() => {
+    const arrived = initialLeads.map((l) => l.id).filter((id) => !seenIdsRef.current.has(id));
+    if (arrived.length > 0) {
+      arrived.forEach((id) => seenIdsRef.current.add(id));
+      setFreshIds((prev) => new Set(Array.from(prev).concat(arrived)));
+    }
     setLeads((prev) => {
       const pending = pendingRef.current;
       if (pending === null) return initialLeads;
@@ -162,7 +184,7 @@ export function LeadsDashboard({ initialLeads, partners }: Props) {
     () => ({
       total: leads.length,
       new: leads.filter((l) => l.status === "LEAD_CREATED").length,
-      duplicates: leads.filter((l) => l.duplicateFlag).length,
+      newCustomers: leads.filter((l) => l.isNewCustomer).length,
       disbursed: leads.filter((l) => l.status === "DISBURSED").length,
     }),
     [leads]
@@ -204,6 +226,20 @@ export function LeadsDashboard({ initialLeads, partners }: Props) {
               />
               Refresh
             </button>
+            <span aria-live="polite" className="inline-flex">
+              {freshIds.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setFreshIds(new Set())}
+                  title="Mark as seen"
+                  className="rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                >
+                  <Badge variant="pending" dot>
+                    {freshIds.size} new {freshIds.size === 1 ? "lead" : "leads"}
+                  </Badge>
+                </button>
+              )}
+            </span>
           </p>
         </div>
         <div className="relative md:w-72">
@@ -226,7 +262,7 @@ export function LeadsDashboard({ initialLeads, partners }: Props) {
         {[
           ["Total leads", stats.total],
           ["New", stats.new],
-          ["Flagged duplicates", stats.duplicates],
+          ["New customers", stats.newCustomers],
           ["Disbursed", stats.disbursed],
         ].map(([label, value]) => (
           <Card key={label}>
@@ -275,10 +311,9 @@ export function LeadsDashboard({ initialLeads, partners }: Props) {
                   <TableHead>Mobile</TableHead>
                   <TableHead>Pincode</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Source</TableHead>
                   <TableHead>Partner</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Flag</TableHead>
+                  <TableHead>New customer</TableHead>
                   <TableHead>Submitted</TableHead>
                 </TableRow>
               </TableHeader>
@@ -288,7 +323,7 @@ export function LeadsDashboard({ initialLeads, partners }: Props) {
                   return (
                     <TableRow
                       key={lead.id}
-                      onClick={() => setSelectedId(lead.id)}
+                      onClick={() => openLead(lead.id)}
                       data-state={lead.id === selectedId ? "selected" : undefined}
                       className="cursor-pointer"
                     >
@@ -300,12 +335,17 @@ export function LeadsDashboard({ initialLeads, partners }: Props) {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedId(lead.id);
+                            openLead(lead.id);
                           }}
                           className="text-left underline-offset-4 hover:underline focus-visible:outline-none focus-visible:underline"
                         >
                           {lead.name}
                         </button>
+                        {freshIds.has(lead.id) && (
+                          <Badge variant="pending" dot className="ml-2 align-middle">
+                            New
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell>{lead.mobile}</TableCell>
                       <TableCell>{lead.pinCode}</TableCell>
@@ -313,21 +353,12 @@ export function LeadsDashboard({ initialLeads, partners }: Props) {
                         {amount !== null ? formatInr(amount) : "—"}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
-                        <Badge
-                          className={cn(
-                            "border-transparent",
-                            lead.source === "AARTHIKLABS"
-                              ? "bg-black-solid font-bold text-white hover:bg-black-solid"
-                              : "bg-secondary-container font-extrabold text-on-secondary-container hover:bg-secondary-container"
-                          )}
-                        >
-                          {SOURCE_LABELS[lead.source]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {lead.partner?.orgName ?? (
-                          <span className="text-on-surface-variant">—</span>
-                        )}
+                        {lead.partner?.orgName ??
+                          (lead.source === "AARTHIKLABS" ? (
+                            "ONDC"
+                          ) : (
+                            <span className="text-on-surface-variant">—</span>
+                          ))}
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Select
@@ -358,16 +389,12 @@ export function LeadsDashboard({ initialLeads, partners }: Props) {
                         </Select>
                       </TableCell>
                       <TableCell>
-                        {lead.duplicateFlag ? (
-                          <Badge className="border-transparent bg-error-container font-extrabold text-on-error-container hover:bg-error-container">
-                            Duplicate
-                          </Badge>
-                        ) : (
-                          <span className="text-on-surface-variant">—</span>
-                        )}
+                        <Badge variant={lead.isNewCustomer ? "success" : "grey"}>
+                          {lead.isNewCustomer ? "Yes" : "No"}
+                        </Badge>
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {formatDate(lead.createdAt)}
+                      <TableCell className="whitespace-nowrap" title={formatDateTime(lead.createdAt)}>
+                        {submittedLabel(lead.createdAt, clock)}
                       </TableCell>
                     </TableRow>
                   );
@@ -382,10 +409,10 @@ export function LeadsDashboard({ initialLeads, partners }: Props) {
         lead={selectedLead}
         allLeads={leads}
         onOpenChange={(open) => {
-          if (!open) setSelectedId(null);
+          if (!open) openLead(null);
         }}
         onStatusChange={updateStatus}
-        onSelectLead={setSelectedId}
+        onSelectLead={openLead}
       />
 
       <DisbursementDialog

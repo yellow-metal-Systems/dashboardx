@@ -10,6 +10,7 @@ import {
   parseLeadStatus,
   statusBadgeClass,
   statusLabel,
+  submittedLabel,
 } from "@/lib/leads";
 
 import { makeLead } from "./fixtures";
@@ -127,5 +128,22 @@ describe("provisional ONDC offer", () => {
     expect(offerPlanLabel("BULLET")).toBe("Bullet · 68% LTV");
     expect(offerPlanLabel("MONTHLY")).toBe("Monthly · 75% LTV");
     expect(offerPlanLabel("SOMETHING_NEW")).toBe("SOMETHING_NEW");
+  });
+});
+
+describe("submittedLabel", () => {
+  const now = new Date("2026-10-08T12:00:00Z");
+  const ago = (h: number) => new Date(now.getTime() - h * 3_600_000).toISOString();
+
+  it("buckets a lead's age in hours, then shows the date after 96 hours", () => {
+    expect(submittedLabel(ago(0), now)).toBe("Under 24 hrs");
+    expect(submittedLabel(ago(23.99), now)).toBe("Under 24 hrs");
+    expect(submittedLabel(ago(24), now)).toBe("24–36 hrs");
+    expect(submittedLabel(ago(35.99), now)).toBe("24–36 hrs");
+    expect(submittedLabel(ago(36), now)).toBe("36–72 hrs");
+    expect(submittedLabel(ago(71.99), now)).toBe("36–72 hrs");
+    expect(submittedLabel(ago(72), now)).toBe("72–96 hrs");
+    expect(submittedLabel(ago(95.99), now)).toBe("72–96 hrs");
+    expect(submittedLabel(ago(96), now)).toMatch(/^\d{1,2} \w{3,4} 2026$/);
   });
 });

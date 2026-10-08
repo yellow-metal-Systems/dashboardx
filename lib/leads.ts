@@ -152,6 +152,8 @@ export type Lead = {
   acceptanceState: AcceptanceState;
   status: string;
   duplicateFlag: boolean;
+  /** First lead ever from this mobile. Stand-in until the LMS says who is already a customer. */
+  isNewCustomer: boolean;
   branchManagerStatus: BranchManagerStatus;
   loanConfirmedAmount: number | null;
   loanConfirmedAt: string | null;
@@ -289,6 +291,18 @@ export function formatDate(iso: string): string {
 
 export function formatDateTime(iso: string): string {
   return dateTimeFormatter.format(new Date(iso));
+}
+
+const HOUR_MS = 3_600_000;
+
+/** How old a lead is, in the buckets staff work by; the date once it's 96 hours old. */
+export function submittedLabel(iso: string, now: Date = new Date()): string {
+  const hours = (now.getTime() - new Date(iso).getTime()) / HOUR_MS;
+  if (hours < 24) return "Under 24 hrs";
+  if (hours < 36) return "24–36 hrs";
+  if (hours < 72) return "36–72 hrs";
+  if (hours < 96) return "72–96 hrs";
+  return formatDate(iso);
 }
 
 export function joinAddress(line1: string | null, line2: string | null): string {
