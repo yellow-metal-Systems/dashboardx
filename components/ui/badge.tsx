@@ -41,7 +41,10 @@ function Badge({ className, variant, dot, children, ...props }: BadgeProps) {
       {dot && (
         <span
           aria-hidden="true"
-          className={cn("size-1.5 shrink-0 rounded-full", variant === "pending" ? "bg-warning" : "bg-current")}
+          className={cn(
+            "size-1.5 shrink-0 rounded-full",
+            variant === "pending" ? "bg-warning" : variant === "success" ? "bg-success-solid" : "bg-current"
+          )}
         />
       )}
       {children}

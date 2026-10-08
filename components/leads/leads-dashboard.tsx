@@ -40,6 +40,8 @@ import {
   formatDateTime,
   formatInr,
   submittedLabel,
+  isNewLead,
+  NEW_LEAD_MINUTES,
   leadRef,
   type Lead,
   type LeadPartner,
@@ -74,21 +76,8 @@ export function LeadsDashboard({ initialLeads, partners, lmsToMatch = 0 }: Props
   const pendingRef = useRef<string | null>(null);
   pendingRef.current = pendingId;
 
-  // Leads that arrived while this page was open (via the poll below). Seeded with
-  // the first render, so only genuinely new arrivals get the "New" badge; opening
-  // a lead clears its badge. Not persisted: it means "since you've been looking".
-  const seenIdsRef = useRef<Set<string>>(new Set(initialLeads.map((l) => l.id)));
-  const [freshIds, setFreshIds] = useState<Set<string>>(() => new Set());
-
   function openLead(id: string | null) {
     setSelectedId(id);
-    if (id === null) return;
-    setFreshIds((prev) => {
-      if (!prev.has(id)) return prev;
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
   }
 
   // Leads also arrive from AarthikLabs posting to the partner API, and nothing
@@ -104,6 +93,8 @@ export function LeadsDashboard({ initialLeads, partners, lmsToMatch = 0 }: Props
     const id = window.setInterval(() => setClock(new Date()), 10_000);
     return () => window.clearInterval(id);
   }, []);
+  // Leads under 45 minutes old get the green "New" pill; it drops off by itself.
+  const newCount = leads.filter((l) => isNewLead(l.createdAt, clock)).length;
 
   // Absorb a newer server snapshot.
   //
@@ -115,11 +106,6 @@ export function LeadsDashboard({ initialLeads, partners, lmsToMatch = 0 }: Props
   // The row currently being mutated is preserved, so a server render that lands
   // mid-flight cannot briefly flash the old status back.
   useEffect(() => {
-    const arrived = initialLeads.map((l) => l.id).filter((id) => !seenIdsRef.current.has(id));
-    if (arrived.length > 0) {
-      arrived.forEach((id) => seenIdsRef.current.add(id));
-      setFreshIds((prev) => new Set(Array.from(prev).concat(arrived)));
-    }
     setLeads((prev) => {
       const pending = pendingRef.current;
       if (pending === null) return initialLeads;
@@ -237,17 +223,10 @@ export function LeadsDashboard({ initialLeads, partners, lmsToMatch = 0 }: Props
               </Link>
             )}
             <span aria-live="polite" className="inline-flex">
-              {freshIds.size > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setFreshIds(new Set())}
-                  title="Mark as seen"
-                  className="rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-                >
-                  <Badge variant="pending" dot>
-                    {freshIds.size} new {freshIds.size === 1 ? "lead" : "leads"}
-                  </Badge>
-                </button>
+              {newCount > 0 && (
+                <Badge variant="success" dot data-new-count>
+                  {newCount} new in the last {NEW_LEAD_MINUTES} min
+                </Badge>
               )}
             </span>
           </div>
@@ -351,8 +330,8 @@ export function LeadsDashboard({ initialLeads, partners, lmsToMatch = 0 }: Props
                         >
                           {lead.name}
                         </button>
-                        {freshIds.has(lead.id) && (
-                          <Badge variant="pending" dot className="ml-2 align-middle">
+                        {isNewLead(lead.createdAt, clock) && (
+                          <Badge variant="success" dot className="ml-2 align-middle" data-new-lead>
                             New
                           </Badge>
                         )}
@@ -370,7 +349,10 @@ export function LeadsDashboard({ initialLeads, partners, lmsToMatch = 0 }: Props
                             <span className="text-on-surface-variant">—</span>
                           ))}
                       </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
+                      <TableCell
+                        onClick={(e) => e.stopPropagation()}
+                        title={lead.lmsUpdatedAt ? `Updated by the LMS on ${formatDateTime(lead.lmsUpdatedAt)}` : undefined}
+                      >
                         <Select
                           value={lead.status}
                           onValueChange={(value) => updateStatus(lead.id, value)}
@@ -383,11 +365,20 @@ export function LeadsDashboard({ initialLeads, partners, lmsToMatch = 0 }: Props
                           <SelectTrigger
                             aria-label={`Status for ${lead.name}`}
                             className={cn(
-                              "h-8 w-40 !rounded-full border-transparent !shadow-none disabled:opacity-100",
+                              "h-8 w-44 gap-1.5 !rounded-full border-transparent !shadow-none disabled:opacity-100",
                               statusBadgeClass(lead.status)
                             )}
                           >
                             <SelectValue>{statusLabel(lead.status)}</SelectValue>
+                            {/* The LMS mark sits inside the pill, beside the arrow, so the cell stays one line. */}
+                            {lead.lmsUpdatedAt && (
+                              <span
+                                className="ml-auto rounded-full bg-white/70 px-1.5 text-[10px] font-bold leading-4 tracking-wide"
+                                data-lms-tag
+                              >
+                                LMS
+                              </span>
+                            )}
                           </SelectTrigger>
                           <SelectContent>
                             {LEAD_STATUSES.map((status) => (
@@ -397,16 +388,6 @@ export function LeadsDashboard({ initialLeads, partners, lmsToMatch = 0 }: Props
                             ))}
                           </SelectContent>
                         </Select>
-                        {lead.lmsUpdatedAt && (
-                          <Badge
-                            variant="grey"
-                            className="ml-2 align-middle"
-                            title={`Updated by the LMS on ${formatDateTime(lead.lmsUpdatedAt)}`}
-                            data-lms-tag
-                          >
-                            LMS
-                          </Badge>
-                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant={lead.isNewCustomer ? "success" : "grey"}>

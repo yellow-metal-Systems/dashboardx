@@ -301,14 +301,31 @@ export function formatDateTime(iso: string): string {
 
 const HOUR_MS = 3_600_000;
 
+// Upper bound in hours → label. Past the last one the column shows the date.
+const AGE_BUCKETS: [number, string][] = [
+  [0.5, "Under 30 min"],
+  [1, "30 min–1 hr"],
+  [2, "1–2 hrs"],
+  [6, "2–6 hrs"],
+  [12, "6–12 hrs"],
+  [24, "12–24 hrs"],
+  [36, "24–36 hrs"],
+  [72, "36–72 hrs"],
+  [96, "72–96 hrs"],
+];
+
 /** How old a lead is, in the buckets staff work by; the date once it's 96 hours old. */
 export function submittedLabel(iso: string, now: Date = new Date()): string {
   const hours = (now.getTime() - new Date(iso).getTime()) / HOUR_MS;
-  if (hours < 24) return "Under 24 hrs";
-  if (hours < 36) return "24–36 hrs";
-  if (hours < 72) return "36–72 hrs";
-  if (hours < 96) return "72–96 hrs";
-  return formatDate(iso);
+  const bucket = AGE_BUCKETS.find(([max]) => hours < max);
+  return bucket ? bucket[1] : formatDate(iso);
+}
+
+/** How long a lead keeps the green "New" pill in the Leads table. */
+export const NEW_LEAD_MINUTES = 45;
+
+export function isNewLead(iso: string, now: Date = new Date()): boolean {
+  return now.getTime() - new Date(iso).getTime() < NEW_LEAD_MINUTES * 60_000;
 }
 
 /** Who made a timeline change, as staff read it: "LMS", a staff email, or the raw actor. */

@@ -11,6 +11,7 @@ import {
   statusBadgeClass,
   statusLabel,
   submittedLabel,
+  isNewLead,
 } from "@/lib/leads";
 
 import { makeLead } from "./fixtures";
@@ -135,9 +136,15 @@ describe("submittedLabel", () => {
   const now = new Date("2026-10-08T12:00:00Z");
   const ago = (h: number) => new Date(now.getTime() - h * 3_600_000).toISOString();
 
-  it("buckets a lead's age in hours, then shows the date after 96 hours", () => {
-    expect(submittedLabel(ago(0), now)).toBe("Under 24 hrs");
-    expect(submittedLabel(ago(23.99), now)).toBe("Under 24 hrs");
+  it("buckets a lead's age from 30 minutes up, then shows the date after 96 hours", () => {
+    expect(submittedLabel(ago(0), now)).toBe("Under 30 min");
+    expect(submittedLabel(ago(0.49), now)).toBe("Under 30 min");
+    expect(submittedLabel(ago(0.5), now)).toBe("30 min–1 hr");
+    expect(submittedLabel(ago(1), now)).toBe("1–2 hrs");
+    expect(submittedLabel(ago(2), now)).toBe("2–6 hrs");
+    expect(submittedLabel(ago(6), now)).toBe("6–12 hrs");
+    expect(submittedLabel(ago(12), now)).toBe("12–24 hrs");
+    expect(submittedLabel(ago(23.99), now)).toBe("12–24 hrs");
     expect(submittedLabel(ago(24), now)).toBe("24–36 hrs");
     expect(submittedLabel(ago(35.99), now)).toBe("24–36 hrs");
     expect(submittedLabel(ago(36), now)).toBe("36–72 hrs");
@@ -145,5 +152,16 @@ describe("submittedLabel", () => {
     expect(submittedLabel(ago(72), now)).toBe("72–96 hrs");
     expect(submittedLabel(ago(95.99), now)).toBe("72–96 hrs");
     expect(submittedLabel(ago(96), now)).toMatch(/^\d{1,2} \w{3,4} 2026$/);
+  });
+});
+
+describe("isNewLead", () => {
+  const now = new Date("2026-10-08T12:00:00Z");
+  const ago = (min: number) => new Date(now.getTime() - min * 60_000).toISOString();
+
+  it("is true for 45 minutes after submission", () => {
+    expect(isNewLead(ago(0), now)).toBe(true);
+    expect(isNewLead(ago(44.9), now)).toBe(true);
+    expect(isNewLead(ago(45), now)).toBe(false);
   });
 });
