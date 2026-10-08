@@ -252,9 +252,9 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
                 className="w-full"
               />
               {lead.lmsUpdatedAt && (
-                <p className="flex items-center gap-2 text-xs text-on-surface-variant" data-lms-tag>
+                <div className="flex items-center gap-2 text-xs text-on-surface-variant" data-lms-tag>
                   <Badge variant="grey">LMS</Badge> Updated by the Loan Managers App on {formatDateTime(lead.lmsUpdatedAt)}
-                </p>
+                </div>
               )}
             </CardContent>
           </Card>

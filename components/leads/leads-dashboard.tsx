@@ -212,7 +212,7 @@ export function LeadsDashboard({ initialLeads, partners, lmsToMatch = 0 }: Props
             Internal
           </p>
           <h1 className="mt-1 text-heading-lg text-on-surface">Leads</h1>
-          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-on-surface-variant">
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-on-surface-variant">
             <span>
               {leads.length} total · {filteredLeads.length} shown
             </span>
@@ -250,7 +250,7 @@ export function LeadsDashboard({ initialLeads, partners, lmsToMatch = 0 }: Props
                 </button>
               )}
             </span>
-          </p>
+          </div>
         </div>
         <div className="relative md:w-72">
           <Search
