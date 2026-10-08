@@ -154,6 +154,12 @@ export type Lead = {
   duplicateFlag: boolean;
   /** First lead ever from this mobile. Stand-in until the LMS says who is already a customer. */
   isNewCustomer: boolean;
+  /** When the latest status change came from the LMS (Loan Managers App); null if it didn't. */
+  lmsUpdatedAt: string | null;
+  /** The customer's GSTIN, when their business is GST-registered. */
+  gstin?: string | null;
+  /** Branch handling the lead (chosen by the partner or assigned from the PIN code). */
+  branch?: { id: string; name: string; state: string | null } | null;
   branchManagerStatus: BranchManagerStatus;
   loanConfirmedAmount: number | null;
   loanConfirmedAt: string | null;
@@ -303,6 +309,12 @@ export function submittedLabel(iso: string, now: Date = new Date()): string {
   if (hours < 72) return "36–72 hrs";
   if (hours < 96) return "72–96 hrs";
   return formatDate(iso);
+}
+
+/** Who made a timeline change, as staff read it: "LMS", a staff email, or the raw actor. */
+export function actorLabel(actor: string): string {
+  if (actor === "lms" || actor === "system:lms") return "LMS";
+  return actor.replace(/^staff:/, "");
 }
 
 export function joinAddress(line1: string | null, line2: string | null): string {

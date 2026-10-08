@@ -150,3 +150,51 @@ export async function syncRewards(partnerId?: string): Promise<RewardSync | null
     return null;
   }
 }
+
+export type BranchInfo = { name: string; state: string };
+
+/**
+ * Branch names by id. The branch master lives in serverx (src/data/branches.ts);
+ * cached for an hour; empty if serverx can't be reached (pages then show the id).
+ */
+export async function fetchBranchNames(): Promise<Map<string, BranchInfo>> {
+  if (!isConfigured()) return new Map();
+  try {
+    const res = await fetch(`${SERVER_BASE_URL}/api/internal/branches`, {
+      headers: { "x-api-key": INTERNAL_API_KEY },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return new Map();
+    const body = (await res.json()) as { branches: { branch_id: string; branch_name: string; state: string }[] };
+    return new Map(body.branches.map((b) => [b.branch_id, { name: b.branch_name, state: b.state }]));
+  } catch {
+    return new Map();
+  }
+}
+
+/**
+ * Applies an LMS loan event that couldn't be matched to the lead staff picked
+ * (serverx applies it exactly as if the LMS had named the lead).
+ */
+export async function resolveLmsEvent(
+  eventId: string,
+  leadId: string,
+  actor: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isConfigured()) return { ok: false, error: "The lead service isn't configured." };
+  try {
+    const res = await fetch(`${SERVER_BASE_URL}/api/internal/lms/loan-events/${encodeURIComponent(eventId)}/resolve`, {
+      method: "POST",
+      headers: { "x-api-key": INTERNAL_API_KEY, "content-type": "application/json" },
+      body: JSON.stringify({ lead_id: leadId, actor }),
+      signal: AbortSignal.timeout(15_000),
+      cache: "no-store",
+    });
+    if (res.ok) return { ok: true };
+    const body = (await res.json().catch(() => null)) as { message?: string } | null;
+    return { ok: false, error: body?.message ?? `The lead service answered ${res.status}.` };
+  } catch {
+    return { ok: false, error: "Couldn't reach the lead service. Try again." };
+  }
+}

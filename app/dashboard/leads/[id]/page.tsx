@@ -21,6 +21,7 @@ import {
   offerPlanLabel,
   leadRef,
   statusLabel,
+  actorLabel,
 } from "@/lib/leads";
 import { getLeadDetail } from "@/lib/leads-repo";
 
@@ -106,6 +107,14 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
                 <Field label="Mobile number">{lead.mobile}</Field>
                 <Field label="Address">{lead.address}</Field>
                 <Field label="Pincode">{lead.pinCode}</Field>
+                <Field label="Branch">
+                  {lead.branch ? `${lead.branch.name}${lead.branch.state ? `, ${lead.branch.state}` : ""}` : "To be assigned"}
+                </Field>
+                {lead.gstin && (
+                  <Field label="GSTIN">
+                    <span className="font-mono text-xs">{lead.gstin}</span>
+                  </Field>
+                )}
                 {lead.dob && <Field label="Date of birth">{formatDate(lead.dob)}</Field>}
               </dl>
             </CardContent>
@@ -221,7 +230,7 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
                       <span className="text-on-surface">
                         {a.message}
                         {a.actor && (
-                          <span className="text-on-surface-variant"> by {a.actor}</span>
+                          <span className="text-on-surface-variant"> by {actorLabel(a.actor)}</span>
                         )}
                       </span>
                     </li>
@@ -242,6 +251,11 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
                 status={lead.status}
                 className="w-full"
               />
+              {lead.lmsUpdatedAt && (
+                <p className="flex items-center gap-2 text-xs text-on-surface-variant" data-lms-tag>
+                  <Badge variant="grey">LMS</Badge> Updated by the Loan Managers App on {formatDateTime(lead.lmsUpdatedAt)}
+                </p>
+              )}
             </CardContent>
           </Card>
 

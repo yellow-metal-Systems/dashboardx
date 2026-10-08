@@ -6,7 +6,7 @@ import type { PartnerType } from "@prisma/client";
 import { requireAdminOrThrow, requireStaffOrThrow } from "@/lib/auth/session";
 import { LEADBRIDGE_URL } from "@/lib/env";
 import { ApiKeyError, createApiKey, revokeApiKey } from "./api-keys";
-import { AdminError, PartnerAccountError, onboardPartner, resendInvite, setPartnerEnabled } from "./onboarding";
+import { AdminError, PartnerAccountError, onboardPartner, resendInvite, setGstinRequired, setPartnerEnabled } from "./onboarding";
 import { RewardError, approveReward, markRewardPaid, rejectReward, revealPayoutDetails, setRewardRules } from "./rewards";
 
 // Server actions for partners and rewards. Each re-checks the staff session
@@ -37,6 +37,7 @@ export async function addPartnerAction(_prev: FormState, fd: FormData): Promise<
       orgName,
       type,
       isOndc: fd.get("isOndc") === "on",
+      gstinRequired: fd.get("gstinRequired") === "on",
       contactEmail,
       personName,
       mobile: text(fd, "mobile"),
@@ -59,6 +60,12 @@ export async function resendInviteAction(_prev: FormState, fd: FormData): Promis
     if (err instanceof AdminError) return { error: err.message };
     throw err;
   }
+}
+
+export async function setGstinRequiredAction(fd: FormData): Promise<void> {
+  await requireStaffOrThrow();
+  await setGstinRequired(text(fd, "partnerId"), fd.get("required") === "true");
+  revalidatePath("/dashboard/partners", "layout");
 }
 
 export async function setPartnerEnabledAction(fd: FormData): Promise<void> {

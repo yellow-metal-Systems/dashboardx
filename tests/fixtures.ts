@@ -50,6 +50,7 @@ export function makeLead(overrides: Partial<Lead> & Required_): Lead {
     status: "LEAD_CREATED",
     duplicateFlag: false,
     isNewCustomer: true,
+    lmsUpdatedAt: null,
     branchManagerStatus: "NOT_SENT",
     loanConfirmedAmount: null,
     loanConfirmedAt: null,

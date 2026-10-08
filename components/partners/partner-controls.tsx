@@ -8,6 +8,7 @@ import {
   createApiKeyAction,
   resendInviteAction,
   revokeApiKeyAction,
+  setGstinRequiredAction,
   setPartnerEnabledAction,
   type FormState,
   type KeyFormState,
@@ -36,6 +37,18 @@ export function ResendInvite({ partnerUserId, name }: { partnerUserId: string; n
       {state.inviteUrl && <CopyField value={state.inviteUrl} label={`Invite link for ${name}`} testId="invite-link" />}
       {state.error && <p role="alert" className="text-xs text-error">{state.error}</p>}
     </div>
+  );
+}
+
+/** Whether this partner's leads must include the customer's GSTIN (serverx enforces it). */
+export function GstinRequiredToggle({ partnerId, required }: { partnerId: string; required: boolean }) {
+  return (
+    <form action={setGstinRequiredAction} className="flex items-center gap-3 text-sm">
+      <input type="hidden" name="partnerId" value={partnerId} />
+      <input type="hidden" name="required" value={required ? "false" : "true"} />
+      <span className="text-on-surface">Customer&apos;s GSTIN on leads: <b>{required ? "required" : "optional"}</b></span>
+      <Pending idle={required ? "Make optional" : "Require it"} busy="Saving…" />
+    </form>
   );
 }
 

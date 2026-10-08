@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 
 import { prisma } from "@/lib/prisma";
-import { firstLeadIds, listLeads } from "@/lib/leads-repo";
+import { firstLeadIds, listLeads, lmsStatusTimes } from "@/lib/leads-repo";
 
 // "New customer" = the first lead ever from a mobile, decided across the whole
 // table (the same rule partner rewards use). SKIPS without TEST_DATABASE_URL.
@@ -39,5 +39,17 @@ db("new customer (database)", () => {
       YMLEAD0000000004: false,
       YMLEAD0000000005: true,
     });
+  });
+
+  it("tags a lead whose latest status change came from the LMS; a later staff change clears it", async () => {
+    await lead("YMLEAD0000000010", "9800000010", "2026-10-01T10:00:00Z");
+    await lead("YMLEAD0000000011", "9800000011", "2026-10-01T10:00:00Z");
+    const act = (leadId: string, actor: string, at: string) =>
+      prisma.leadActivity.create({ data: { leadId, kind: "STATUS_CHANGED", fromStatus: "LEAD_CREATED", toStatus: "DISBURSED", message: "status changed", actor, createdAt: new Date(at) } });
+    await act("YMLEAD0000000010", "lms", "2026-10-02T10:00:00Z");
+    await act("YMLEAD0000000011", "lms", "2026-10-02T10:00:00Z");
+    await act("YMLEAD0000000011", "staff:a@y.co", "2026-10-03T10:00:00Z");
+    const tags = await lmsStatusTimes(["YMLEAD0000000010", "YMLEAD0000000011"]);
+    expect(Array.from(tags.entries())).toEqual([["YMLEAD0000000010", "2026-10-02T10:00:00.000Z"]]);
   });
 });

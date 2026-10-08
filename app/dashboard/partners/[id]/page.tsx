@@ -5,7 +5,7 @@ import { ChevronLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { CreateApiKey, ResendInvite, RevokeApiKey, TogglePartner } from "@/components/partners/partner-controls";
+import { CreateApiKey, GstinRequiredToggle, ResendInvite, RevokeApiKey, TogglePartner } from "@/components/partners/partner-controls";
 import { isAdmin, requireStaff } from "@/lib/auth/session";
 import { PARTNER_STATUS_BADGE_CLASSES, formatDate, formatInr, statusLabel } from "@/lib/leads";
 import { prisma } from "@/lib/prisma";
@@ -55,6 +55,7 @@ export default async function PartnerPage({ params }: { params: { id: string } }
           <TogglePartner partnerId={p.id} enabled={p.status !== "disabled"} />
         </span>
       </div>
+      <GstinRequiredToggle partnerId={p.id} required={p.gstinRequired} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

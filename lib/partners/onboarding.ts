@@ -53,6 +53,7 @@ export async function createPartnerWithInvite(input: {
   contactEmail: string;
   type: PartnerType;
   isOndc: boolean;
+  gstinRequired?: boolean;
   user: { name: string; mobile: string; email?: string | null };
   createdBy: string | null;
 }): Promise<{ partnerId: string; partnerUserId: string; token: string }> {
@@ -70,6 +71,7 @@ export async function createPartnerWithInvite(input: {
           contactMobile: mobile,
           type: input.type,
           isOndc: input.isOndc,
+          gstinRequired: input.gstinRequired ?? false,
           status: "invited",
         },
       });
@@ -119,6 +121,7 @@ export async function onboardPartner(input: {
   orgName: string;
   type: PartnerType;
   isOndc: boolean;
+  gstinRequired?: boolean;
   contactEmail: string;
   personName: string;
   mobile: string;
@@ -129,6 +132,7 @@ export async function onboardPartner(input: {
     contactEmail: input.contactEmail,
     type: input.type,
     isOndc: input.isOndc,
+    gstinRequired: input.gstinRequired,
     user: { name: input.personName, mobile: input.mobile, email: input.contactEmail },
     createdBy: input.staffEmail,
   });
@@ -172,4 +176,9 @@ export async function setPartnerEnabled(partnerId: string, enabled: boolean) {
       data: { status: "invited" },
     }),
   ]);
+}
+
+/** Staff switch: this partner's leads must include the customer's GSTIN (serverx enforces it). */
+export async function setGstinRequired(partnerId: string, required: boolean) {
+  await prisma.partner.update({ where: { id: partnerId }, data: { gstinRequired: required } });
 }

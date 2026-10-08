@@ -6,6 +6,7 @@ import type {
 } from "@prisma/client";
 
 import { prisma } from "./prisma";
+import { fetchBranchNames, type BranchInfo } from "./server-bridge";
 import {
   LEAD_STATUSES,
   isTerminalStatus,
@@ -34,7 +35,12 @@ function toPartner(row: PartnerRow): LeadPartner {
   return { id: row.id, orgName: row.orgName, contactEmail: row.contactEmail };
 }
 
-export function toLead(row: LeadWithPartner, isNewCustomer: boolean): Lead {
+export function toLead(
+  row: LeadWithPartner,
+  isNewCustomer: boolean,
+  lmsUpdatedAt: string | null = null,
+  branches: Map<string, BranchInfo> = new Map()
+): Lead {
   return {
     id: row.id,
     leadNo: row.leadNo,
@@ -67,6 +73,7 @@ export function toLead(row: LeadWithPartner, isNewCustomer: boolean): Lead {
     status: row.status,
     duplicateFlag: row.duplicateFlag,
     isNewCustomer,
+    lmsUpdatedAt,
     branchManagerStatus: row.branchManagerStatus,
     loanConfirmedAmount: num(row.loanConfirmedAmount),
     loanConfirmedAt: row.loanConfirmedAt?.toISOString() ?? null,
@@ -79,6 +86,10 @@ export function toLead(row: LeadWithPartner, isNewCustomer: boolean): Lead {
     sourceCreatedAt: row.sourceCreatedAt?.toISOString() ?? null,
     externalRef: row.externalRef,
     agentRef: row.agentRef,
+    gstin: row.gstin,
+    branch: row.branchId
+      ? { id: row.branchId, name: branches.get(row.branchId)?.name ?? row.branchId, state: branches.get(row.branchId)?.state ?? null }
+      : null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -123,8 +134,30 @@ export async function listLeads(): Promise<Lead[]> {
     // than letting one page load grow without limit.
     take: 1000,
   });
-  const firsts = await firstLeadIds(rows.map((r) => r.mobile));
-  return rows.map((r) => toLead(r, firsts.has(r.id)));
+  const [firsts, lms, branches] = await Promise.all([
+    firstLeadIds(rows.map((r) => r.mobile)),
+    lmsStatusTimes(rows.map((r) => r.id)),
+    fetchBranchNames(),
+  ]);
+  return rows.map((r) => toLead(r, firsts.has(r.id), lms.get(r.id) ?? null, branches));
+}
+
+/**
+ * Leads whose LATEST status change came from the LMS (actor "lms"), with when —
+ * for the "LMS" tag on the status. A later change by staff clears it.
+ */
+export async function lmsStatusTimes(leadIds: string[]): Promise<Map<string, string>> {
+  if (leadIds.length === 0) return new Map();
+  const rows = await prisma.$queryRaw<{ lead_id: string; actor: string | null; created_at: Date }[]>`
+    SELECT DISTINCT ON (lead_id) lead_id, actor, created_at FROM lead_activities
+    WHERE lead_id = ANY(${leadIds}::text[]) AND kind IN ('STATUS_CHANGED', 'DISBURSEMENT_RECORDED')
+    ORDER BY lead_id, created_at DESC`;
+  return new Map(rows.filter((r) => r.actor === "lms").map((r) => [r.lead_id, r.created_at.toISOString()]));
+}
+
+/** LMS loan events no lead could be matched to yet (staff resolve them on /dashboard/leads/lms-review). */
+export function countLmsToMatch(): Promise<number> {
+  return prisma.lmsLoanEvent.count({ where: { outcome: { in: ["UNMATCHED", "AMBIGUOUS"] } } });
 }
 
 /**
@@ -175,9 +208,9 @@ export async function getLeadDetail(id: string): Promise<LeadDetail | null> {
     orderBy: { createdAt: "desc" },
   });
 
-  const firsts = await firstLeadIds([row.mobile]);
+  const [firsts, lms, branches] = await Promise.all([firstLeadIds([row.mobile]), lmsStatusTimes([row.id]), fetchBranchNames()]);
   return {
-    lead: toLead(row, firsts.has(row.id)),
+    lead: toLead(row, firsts.has(row.id), lms.get(row.id) ?? null, branches),
     activities: row.activities.map(toActivity),
     duplicates: duplicateRows.map((d) => toLead(d, firsts.has(d.id))),
     webhookEvents: row.webhookEvents.map(toWebhookEvent),

@@ -87,6 +87,9 @@ export function AddPartnerDialog() {
               <label className="flex items-center gap-2 text-sm text-on-surface">
                 <input type="checkbox" name="isOndc" className="size-4 accent-black" /> ONDC participant
               </label>
+              <label className="flex items-center gap-2 text-sm text-on-surface">
+                <input type="checkbox" name="gstinRequired" className="size-4 accent-black" /> Customer&apos;s GSTIN required on every lead
+              </label>
             </FieldGroup>
             {state.error && <p role="alert" className="mt-4 text-sm font-medium text-error">{state.error}</p>}
             <div className="mt-6 flex justify-end"><Submit /></div>

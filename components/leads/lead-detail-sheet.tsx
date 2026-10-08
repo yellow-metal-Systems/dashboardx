@@ -132,6 +132,14 @@ export function LeadDetailSheet({
               <Row label="Mobile">{lead.mobile}</Row>
               <Row label="Address">{lead.address}</Row>
               <Row label="Pincode">{lead.pinCode}</Row>
+              <Row label="Branch">
+                {lead.branch ? `${lead.branch.name}${lead.branch.state ? `, ${lead.branch.state}` : ""}` : "To be assigned"}
+              </Row>
+              {lead.gstin && (
+                <Row label="GSTIN">
+                  <span className="font-mono text-xs">{lead.gstin}</span>
+                </Row>
+              )}
               {lead.dob && <Row label="Date of birth">{formatDate(lead.dob)}</Row>}
             </Section>
 

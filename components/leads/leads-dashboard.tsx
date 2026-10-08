@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { RefreshCw, Search } from "lucide-react";
 
 import { updateLeadStatus } from "@/app/dashboard/actions";
@@ -54,9 +55,11 @@ import {
 type Props = {
   initialLeads: Lead[];
   partners: LeadPartner[];
+  /** LMS updates no lead could be matched to yet. */
+  lmsToMatch?: number;
 };
 
-export function LeadsDashboard({ initialLeads, partners }: Props) {
+export function LeadsDashboard({ initialLeads, partners, lmsToMatch = 0 }: Props) {
   const [leads, setLeads] = useState<Lead[]>(initialLeads);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -226,6 +229,13 @@ export function LeadsDashboard({ initialLeads, partners }: Props) {
               />
               Refresh
             </button>
+            {lmsToMatch > 0 && (
+              <Link href="/dashboard/leads/lms-review" className="inline-flex" data-lms-to-match>
+                <Badge variant="pending" dot>
+                  {lmsToMatch} LMS {lmsToMatch === 1 ? "update needs" : "updates need"} a lead
+                </Badge>
+              </Link>
+            )}
             <span aria-live="polite" className="inline-flex">
               {freshIds.size > 0 && (
                 <button
@@ -387,6 +397,16 @@ export function LeadsDashboard({ initialLeads, partners }: Props) {
                             ))}
                           </SelectContent>
                         </Select>
+                        {lead.lmsUpdatedAt && (
+                          <Badge
+                            variant="grey"
+                            className="ml-2 align-middle"
+                            title={`Updated by the LMS on ${formatDateTime(lead.lmsUpdatedAt)}`}
+                            data-lms-tag
+                          >
+                            LMS
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant={lead.isNewCustomer ? "success" : "grey"}>
