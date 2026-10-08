@@ -3,11 +3,11 @@
 import { revalidatePath } from "next/cache";
 import type { PartnerType } from "@prisma/client";
 
-import { requireStaffOrThrow } from "@/lib/auth/session";
+import { requireAdminOrThrow, requireStaffOrThrow } from "@/lib/auth/session";
 import { LEADBRIDGE_URL } from "@/lib/env";
 import { ApiKeyError, createApiKey, revokeApiKey } from "./api-keys";
 import { AdminError, PartnerAccountError, onboardPartner, resendInvite, setPartnerEnabled } from "./onboarding";
-import { RewardError, approveReward, markRewardPaid, rejectReward, setRewardRules } from "./rewards";
+import { RewardError, approveReward, markRewardPaid, rejectReward, revealPayoutDetails, setRewardRules } from "./rewards";
 
 // Server actions for partners and rewards. Each re-checks the staff session
 // itself: a server action is a POST endpoint that can be called without the page.
@@ -86,35 +86,41 @@ export async function revokeApiKeyAction(fd: FormData): Promise<void> {
   revalidatePath("/dashboard/partners", "layout");
 }
 
-async function staffAction(fn: (email: string) => Promise<void>): Promise<RewardFormState> {
-  const staff = await requireStaffOrThrow();
+// Money is admin-only: each action re-checks the role in the database itself
+// (a server action is a POST endpoint that can be called without the page).
+async function adminAction(fn: (email: string) => Promise<void>): Promise<RewardFormState> {
+  const admin = await requireAdminOrThrow();
   try {
-    await fn(staff.email);
+    await fn(admin.email);
   } catch (err) {
     if (err instanceof RewardError) return { error: err.message };
     throw err;
   }
-  revalidatePath("/dashboard/rewards");
+  revalidatePath("/dashboard/rewards", "layout");
   return { error: null, ok: true };
 }
 
 export async function approveRewardAction(_prev: RewardFormState, fd: FormData) {
-  return staffAction((email) => approveReward(text(fd, "rewardId"), email));
+  return adminAction((email) => approveReward(text(fd, "rewardId"), email));
 }
 
 export async function rejectRewardAction(_prev: RewardFormState, fd: FormData) {
-  return staffAction((email) => rejectReward(text(fd, "rewardId"), text(fd, "reason"), email));
+  return adminAction((email) => rejectReward(text(fd, "rewardId"), text(fd, "reason"), email));
 }
 
 export async function markRewardPaidAction(_prev: RewardFormState, fd: FormData) {
   const tdsRaw = text(fd, "tds");
-  return staffAction((email) =>
-    markRewardPaid(text(fd, "rewardId"), { paymentRef: text(fd, "paymentRef"), tds: tdsRaw ? Number(tdsRaw) : 0 }, email)
+  return adminAction((email) =>
+    markRewardPaid(
+      text(fd, "rewardId"),
+      { paymentRef: text(fd, "paymentRef"), tds: tdsRaw ? Number(tdsRaw) : 0, confirmedNewAccount: fd.get("confirmedNewAccount") === "on" },
+      email
+    )
   );
 }
 
 export async function setRewardRulesAction(_prev: RewardFormState, fd: FormData) {
-  return staffAction((email) =>
+  return adminAction((email) =>
     setRewardRules(
       {
         basePercent: Number(text(fd, "basePercent")),
@@ -122,7 +128,21 @@ export async function setRewardRulesAction(_prev: RewardFormState, fd: FormData)
         // Entered in crore for readability: 2 → ₹2,00,00,000.
         bonusThreshold: Number(text(fd, "bonusThresholdCrore")) * 10_000_000,
       },
+      text(fd, "reason"),
       email
     )
   );
+}
+
+export type RevealState = { error: string | null; details?: { pan: string; accountHolder: string; accountNumber: string; ifsc: string } };
+
+/** Full PAN + account number for an admin about to pay; every reveal is logged. */
+export async function revealPayoutDetailsAction(_prev: RevealState, fd: FormData): Promise<RevealState> {
+  const admin = await requireAdminOrThrow();
+  try {
+    return { error: null, details: await revealPayoutDetails(text(fd, "partnerId"), admin.email) };
+  } catch (err) {
+    if (err instanceof RewardError) return { error: err.message };
+    throw err;
+  }
 }

@@ -146,6 +146,10 @@ model Lead {
   submittedByUserId String?   @map("submitted_by_user_id")
   borrowerConsentAt DateTime? @map("borrower_consent_at") @db.Timestamptz(3)
   consentVersion    String?   @map("consent_version")
+  /// The customer's GSTIN, when their business is GST-registered.
+  gstin             String?   @db.VarChar(15)
+  /// Branch from serverx src/data/branches.ts.
+  branchId          String?   @map("branch_id")
   externalRef       String?   @map("external_ref")
   agentRef          String?   @map("agent_ref")
 
@@ -155,6 +159,7 @@ model Lead {
   partner       Partner?           @relation(fields: [partnerId], references: [id], onDelete: SetNull)
   submittedBy   PartnerUser?       @relation(fields: [submittedByUserId], references: [id], onDelete: SetNull)
   reward        PartnerReward?
+  lmsEvents     LmsLoanEvent[]
   activities    LeadActivity[]
   webhookEvents WebhookEvent[]
   statusOutbox  LeadStatusOutbox[]
@@ -170,6 +175,7 @@ model Lead {
   @@index([loanAmount])
   @@index([offerAmount])
   @@index([status, createdAt])
+  @@index([branchId])
   @@map("leads")
 }
 
@@ -182,6 +188,8 @@ model Partner {
   type          PartnerType   @default(INDIVIDUAL)
   isOndc        Boolean       @default(false) @map("is_ondc")
   isDemo       Boolean       @default(false) @map("is_demo")
+  /// Staff switch: this partner's leads must carry the customer's GSTIN.
+  gstinRequired Boolean      @default(false) @map("gstin_required")
   createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -190,6 +198,8 @@ model Partner {
   apiKeys       PartnerApiKey[]
   rewards       PartnerReward[]
   payoutDetails PartnerPayoutDetails?
+  payoutDetailsHistory PartnerPayoutDetailsHistory[]
+  rewardAuditLog       RewardAuditLog[]
 
   @@index([contactEmail])
   @@map("partners")
@@ -385,11 +395,16 @@ model PartnerReward {
   tdsAmount      Decimal?     @map("tds_amount") @db.Decimal(12, 2)
   rejectedAt     DateTime?    @map("rejected_at") @db.Timestamptz(3)
   rejectedReason String?      @map("rejected_reason")
+  rejectedBy     String?      @map("rejected_by")
+  /// The exact bank details paid to (immutable history row).
+  paidDetailsId  String?      @map("paid_details_id")
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  lead    Lead?   @relation(fields: [leadId], references: [id], onDelete: Restrict)
-  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+  lead        Lead?                        @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  partner     Partner                      @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+  paidDetails PartnerPayoutDetailsHistory? @relation(fields: [paidDetailsId], references: [id], onDelete: Restrict)
+  auditLog    RewardAuditLog[]
 
   @@unique([partnerId, periodMonth])
   @@map("partner_rewards")
@@ -402,6 +417,8 @@ model RewardRate {
   bonusThreshold Decimal  @map("bonus_threshold") @db.Decimal(14, 2)
   effectiveFrom  DateTime @map("effective_from") @db.Timestamptz(3)
   createdBy     String?  @map("created_by")
+  /// Why the rules changed (required for every change).
+  reason        String?
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   @@map("reward_rates")
@@ -419,4 +436,89 @@ model PartnerPayoutDetails {
   partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
 
   @@map("partner_payout_details")
+}
+
+// --- reward controls (serverx migration 6) ---
+model PartnerPayoutDetailsHistory {
+  id            String   @id @default(cuid())
+  partnerId     String   @map("partner_id")
+  pan           String
+  accountHolder String   @map("account_holder")
+  accountNumber String   @map("account_number")
+  ifsc          String
+  savedAt       DateTime @default(now()) @map("saved_at") @db.Timestamptz(3)
+  savedBy       String?  @map("saved_by")
+
+  partner Partner         @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+  paid    PartnerReward[]
+
+  @@index([partnerId, savedAt])
+  @@map("partner_payout_details_history")
+}
+
+enum RewardAuditAction {
+  APPROVED
+  REJECTED
+  PAID
+  AMOUNT_UPDATED
+  RULES_CHANGED
+  DETAILS_REVEALED
+  CLAWBACK_NEEDED
+}
+
+/// Append-only (a trigger refuses UPDATE/DELETE).
+model RewardAuditLog {
+  id        String            @id @default(cuid())
+  partnerId String?           @map("partner_id")
+  rewardId  String?           @map("reward_id")
+  action    RewardAuditAction
+  actor     String
+  at        DateTime          @default(now()) @db.Timestamptz(3)
+  details   Json?
+
+  partner Partner?       @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+  reward  PartnerReward? @relation(fields: [rewardId], references: [id], onDelete: Restrict)
+
+  @@index([partnerId, at])
+  @@index([rewardId])
+  @@map("reward_audit_log")
+}
+
+// --- LMS loan events (serverx migration 7) ---
+enum LmsLoanEventType {
+  DISBURSED
+  REJECTED
+  CANCELLED
+}
+
+enum LmsEventOutcome {
+  APPLIED
+  NO_CHANGE
+  UNMATCHED
+  AMBIGUOUS
+}
+
+model LmsLoanEvent {
+  id               String           @id @default(cuid())
+  eventId          String           @unique @map("event_id")
+  loanId           String?          @map("loan_id")
+  leadIdSent       String?          @map("lead_id_sent")
+  mobileSent       String?          @map("mobile_sent")
+  event            LmsLoanEventType
+  amount           Decimal?         @db.Decimal(14, 2)
+  disbursementDate DateTime?        @map("disbursement_date") @db.Date
+  reason           String?
+  occurredAt       DateTime?        @map("occurred_at") @db.Timestamptz(3)
+  payload          Json
+  outcome          LmsEventOutcome
+  matchedLeadId    String?          @map("matched_lead_id")
+  receivedAt       DateTime         @default(now()) @map("received_at") @db.Timestamptz(3)
+  resolvedBy       String?          @map("resolved_by")
+  resolvedAt       DateTime?        @map("resolved_at") @db.Timestamptz(3)
+
+  matchedLead Lead? @relation(fields: [matchedLeadId], references: [id], onDelete: Restrict)
+
+  @@index([outcome])
+  @@index([matchedLeadId])
+  @@map("lms_loan_events")
 }

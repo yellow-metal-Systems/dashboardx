@@ -1,44 +1,110 @@
 import Link from "next/link";
+import { Search } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { ApproveReward, MarkPaid, RejectReward, RewardRulesForm } from "@/components/rewards/reward-controls";
-import { requireStaff } from "@/lib/auth/session";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RewardRulesForm } from "@/components/rewards/reward-controls";
+import { isAdmin, requireStaff } from "@/lib/auth/session";
 import { formatDate, formatInr } from "@/lib/leads";
-import { REWARD_STATUSES, currentRewardRules, listRewardsForStaff, payoutDateFor, type RewardState } from "@/lib/partners/rewards";
+import { currentRewardRules, listRewardPartners, rewardRulesHistory, type PartnerRewardRow } from "@/lib/partners/rewards";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-const LABEL: Record<RewardState, string> = { PENDING: "To approve", APPROVED: "To pay", PAID: "Paid", REJECTED: "Rejected" };
-
-const crore = (n: number) =>
-  n >= 10_000_000 ? `₹${(n / 10_000_000).toLocaleString("en-IN", { maximumFractionDigits: 2 })} crore` : formatInr(n);
 // Even padding on every side. CardContent's default drops the top padding
 // because it expects a CardHeader above it; these cards have none.
 const PAD = "p-5 md:p-6";
-const monthName = (d: Date) => new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric", timeZone: "UTC" }).format(d);
 
-export default async function RewardsPage({ searchParams }: { searchParams: { status?: string } }) {
-  await requireStaff();
-  const status = (REWARD_STATUSES as readonly string[]).includes(searchParams.status ?? "") ? (searchParams.status as RewardState) : "PENDING";
-  const [{ rows, summary, awaiting }, rules] = await Promise.all([listRewardsForStaff(status), currentRewardRules()]);
+function CountCell({ count, amount }: { count: number; amount?: number }) {
+  if (count === 0) return <span className="text-on-surface-variant">—</span>;
+  return (
+    <span className="flex flex-col">
+      <span className="tabular-nums">{count}</span>
+      {amount !== undefined && <span className="text-xs tabular-nums text-on-surface-variant">{formatInr(amount)}</span>}
+    </span>
+  );
+}
+
+function Flags({ row }: { row: PartnerRewardRow }) {
+  const f = row.flags!;
+  if (!f.noPayoutDetails && !f.detailsChangedRecently && !f.nameMismatch) return <span className="text-on-surface-variant">—</span>;
+  return (
+    <span className="flex flex-wrap gap-1">
+      {f.noPayoutDetails && <Badge variant="grey">No bank details</Badge>}
+      {f.detailsChangedRecently && <Badge variant="pending" dot>Bank changed</Badge>}
+      {f.nameMismatch && <Badge variant="destructive">Name mismatch</Badge>}
+    </span>
+  );
+}
+
+// Rewards grouped by partner. Admins see the money; team members see only how
+// many rewards are where — their data never includes an amount.
+export default async function RewardsPage({ searchParams }: { searchParams: { q?: string } }) {
+  const staff = await requireStaff();
+  const admin = await isAdmin(staff);
+  const [{ rows, totals, awaiting }, rules, history] = await Promise.all([
+    listRewardPartners(admin),
+    admin ? currentRewardRules() : Promise.resolve(null),
+    admin ? rewardRulesHistory() : Promise.resolve([]),
+  ]);
+  const q = (searchParams.q ?? "").trim();
+  const shown = q ? rows.filter((r) => r.orgName.toLowerCase().includes(q.toLowerCase())) : rows;
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
       <div className="flex items-center gap-2">
         <SidebarTrigger />
       </div>
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-heading-lg text-on-surface">Rewards</h1>
-          <p className="mt-1 text-sm text-on-surface-variant">Partner rewards. Approved rewards are paid on the 5th of the next month.</p>
-        </div>
+      <div>
+        <h1 className="text-heading-lg text-on-surface">Rewards</h1>
+        <p className="mt-1 text-sm text-on-surface-variant">
+          {admin
+            ? "Partner rewards, grouped by partner. Approved rewards are paid on the 5th of the next month."
+            : "Each partner's rewards and where they are. Amounts are visible to admins only."}
+        </p>
       </div>
 
-      <Card>
-        <CardContent className={PAD}><RewardRulesForm current={rules} /></CardContent>
-      </Card>
+      {totals && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {[
+            ["To approve", totals.toApprove],
+            ["To pay", totals.owed],
+            ["Paid this financial year", totals.paidThisFy],
+          ].map(([label, value]) => (
+            <Card key={label as string}>
+              <CardContent className={cn("flex flex-col gap-1", PAD)}>
+                <span className="text-sm text-on-surface-variant">{label}</span>
+                <span className="text-heading-lg tabular-nums text-on-surface">{formatInr(value as number)}</span>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {rules && (
+        <Card>
+          <CardContent className={cn("flex flex-col gap-3", PAD)}>
+            <RewardRulesForm current={rules} />
+            {history.length > 1 && (
+              <details className="text-sm">
+                <summary className="cursor-pointer font-bold text-on-surface-variant">Rule changes</summary>
+                <ul className="mt-2 flex flex-col gap-1 text-xs text-on-surface-variant">
+                  {history.map((h) => (
+                    <li key={h.effectiveFrom.toISOString()}>
+                      {formatDate(h.effectiveFrom.toISOString())}: {h.basePercent}% · {h.bonusPercent}% above ₹{h.bonusThreshold / 10_000_000} crore
+                      {h.by ? ` · ${h.by.replace(/^staff:/, "")}` : ""}
+                      {h.reason ? ` — ${h.reason}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {awaiting.length > 0 && (
         <Card>
@@ -59,80 +125,48 @@ export default async function RewardsPage({ searchParams }: { searchParams: { st
         </Card>
       )}
 
-      <nav aria-label="Reward status" className="flex flex-wrap gap-2">
-        {REWARD_STATUSES.map((s) => (
-          <Link
-            key={s}
-            href={`/dashboard/rewards?status=${s}`}
-            aria-current={s === status ? "page" : undefined}
-            className={cn(
-              "inline-flex h-9 items-center rounded-full px-4 text-sm font-bold",
-              s === status ? "bg-black-solid text-white" : "bg-raised text-on-surface shadow-button"
-            )}
-          >
-            {LABEL[s]} · {summary[s].count}{summary[s].count > 0 ? ` · ${formatInr(summary[s].total)}` : ""}
-          </Link>
-        ))}
-      </nav>
-
-      {rows.length === 0 ? (
-        <Card><CardContent className="p-10 text-center text-sm text-on-surface-variant md:p-10">Nothing here.</CardContent></Card>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {rows.map((r) => {
-            const d = r.partner.payoutDetails;
-            return (
-              <Card key={r.id} data-reward={r.lead?.id ?? `bonus-${r.partner.id}`}>
-                <CardContent className={cn("flex flex-col gap-4", PAD)}>
-                  <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-                    <div className="flex min-w-0 flex-1 flex-col gap-1">
-                      <Link href={`/dashboard/partners/${r.partner.id}`} className="text-heading-sm text-on-surface hover:underline">
-                        {r.partner.orgName}
+      <Card>
+        <CardContent className={cn("flex flex-col gap-4", PAD)}>
+          <form role="search" className="relative md:w-72">
+            <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
+            <Input name="q" type="search" defaultValue={q} placeholder="Search partners" aria-label="Search partners" className="pl-9" />
+          </form>
+          {shown.length === 0 ? (
+            <p className="py-10 text-center text-sm text-on-surface-variant">{rows.length ? "No partner matches." : "No rewards yet."}</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="[&>th]:whitespace-nowrap">
+                  <TableHead>Partner</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>To approve</TableHead>
+                  <TableHead>To pay</TableHead>
+                  <TableHead>{admin ? "Paid (this year)" : "Paid"}</TableHead>
+                  <TableHead>Rejected</TableHead>
+                  {admin && <TableHead>Flags</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {shown.map((r) => (
+                  <TableRow key={r.id} className="relative" data-partner={r.id}>
+                    <TableCell className="font-medium text-on-surface">
+                      <Link href={`/dashboard/rewards/${r.id}`} className="after:absolute after:inset-0 hover:underline">
+                        {r.orgName}
                       </Link>
-                      <span className="text-xs text-on-surface-variant">
-                        {r.lead ? (
-                          <>
-                            <Link href={`/dashboard/leads/${r.lead.id}`} className="text-link hover:underline">{r.lead.name}</Link>{" "}
-                            · {Number(r.percent)}% of {formatInr(Number(r.baseAmount))} · disbursed {formatDate(r.disbursedAt.toISOString())}
-                          </>
-                        ) : (
-                          <>{monthName(r.periodMonth!)} bonus · {Number(r.percent)}% of the month&apos;s {crore(Number(r.baseAmount))}</>
-                        )}
-                        {r.approvedAt ? ` · approved ${formatDate(r.approvedAt.toISOString())}` : ""}
-                        {status === "APPROVED" && r.approvedAt ? ` · pay on ${formatDate(payoutDateFor(r.approvedAt).toISOString())}` : ""}
-                        {r.paidAt ? ` · paid ${formatDate(r.paidAt.toISOString())} · ref ${r.paymentRef}` : ""}
-                        {r.tdsAmount !== null && Number(r.tdsAmount) > 0 ? ` · TDS ${formatInr(Number(r.tdsAmount))}` : ""}
-                        {r.rejectedReason ? ` · ${r.rejectedReason}` : ""}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-heading-sm tabular-nums text-on-surface">{formatInr(Number(r.amount))}</span>
-                      {status === "PENDING" && <ApproveReward rewardId={r.id} />}
-                    </div>
-                  </div>
-                  {status === "APPROVED" && (
-                    <div className="flex flex-col gap-3 rounded-lg bg-surface-container-low p-4 text-sm">
-                      {d ? (
-                        <span className="tabular-nums">
-                          Pay to <b>{d.accountHolder}</b> · A/c {d.accountNumber} · IFSC {d.ifsc} · PAN {d.pan}
-                        </span>
-                      ) : (
-                        <span className="text-on-pending-soft">The partner hasn&apos;t added PAN and bank details yet.</span>
-                      )}
-                      <MarkPaid rewardId={r.id} disabled={!d} />
-                    </div>
-                  )}
-                  {(status === "PENDING" || status === "APPROVED") && (
-                    <div className="border-t border-outline-variant pt-3">
-                      <RejectReward rewardId={r.id} />
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+                    </TableCell>
+                    <TableCell className="text-on-surface-variant">{r.type === "ORGANISATION" ? "Organisation" : "Individual"}</TableCell>
+                    <TableCell><CountCell count={r.counts.PENDING} amount={r.money?.toApprove} /></TableCell>
+                    <TableCell><CountCell count={r.counts.APPROVED} amount={r.money?.owed} /></TableCell>
+                    <TableCell><CountCell count={r.counts.PAID} amount={r.money?.paidThisFy} /></TableCell>
+                    <TableCell><CountCell count={r.counts.REJECTED} /></TableCell>
+                    {admin && <TableCell><Flags row={r} /></TableCell>}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -6,8 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { CreateApiKey, ResendInvite, RevokeApiKey, TogglePartner } from "@/components/partners/partner-controls";
-import { requireStaff } from "@/lib/auth/session";
-import { PARTNER_STATUS_BADGE_CLASSES, formatDate, formatInr } from "@/lib/leads";
+import { isAdmin, requireStaff } from "@/lib/auth/session";
+import { PARTNER_STATUS_BADGE_CLASSES, formatDate, formatInr, statusLabel } from "@/lib/leads";
 import { prisma } from "@/lib/prisma";
 import { cn } from "@/lib/utils";
 
@@ -16,19 +16,24 @@ export const dynamic = "force-dynamic";
 const STATUS_LABEL: Record<string, string> = { invited: "Invited", active: "Active", disabled: "Turned off" };
 
 export default async function PartnerPage({ params }: { params: { id: string } }) {
-  await requireStaff();
+  const staff = await requireStaff();
+  const admin = await isAdmin(staff);
   const p = await prisma.partner.findUnique({
     where: { id: params.id },
     include: {
       users: { orderBy: { createdAt: "asc" } },
       apiKeys: { orderBy: { createdAt: "desc" } },
       payoutDetails: { select: { partnerId: true } },
-      rewards: { select: { amount: true, status: true } },
+      leads: { orderBy: { createdAt: "desc" }, take: 25, select: { id: true, name: true, status: true, createdAt: true } },
       _count: { select: { leads: true } },
     },
   });
   if (!p) notFound();
-  const sum = (s: string) => p.rewards.filter((r) => r.status === s).reduce((n, r) => n + Number(r.amount), 0);
+  // Money only for admins: team members' page never queries an amount.
+  const sums = admin
+    ? await prisma.partnerReward.groupBy({ by: ["status"], where: { partnerId: p.id }, _sum: { amount: true } })
+    : [];
+  const sum = (s: string) => Number(sums.find((g) => g.status === s)?._sum.amount ?? 0);
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
@@ -74,16 +79,45 @@ export default async function PartnerPage({ params }: { params: { id: string } }
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader><CardTitle>Rewards</CardTitle></CardHeader>
-          <CardContent className="grid grid-cols-3 gap-3 text-sm">
-            <div><span className="block text-on-surface-variant">To approve</span><b>{formatInr(sum("PENDING"))}</b></div>
-            <div><span className="block text-on-surface-variant">To pay</span><b>{formatInr(sum("APPROVED"))}</b></div>
-            <div><span className="block text-on-surface-variant">Paid</span><b>{formatInr(sum("PAID"))}</b></div>
-            <p className="col-span-3 text-xs text-on-surface-variant">
-              {p.payoutDetails ? "PAN and bank details added." : "No PAN and bank details yet — they add them in the LeadBridge app."}{" "}
-              <Link href="/dashboard/rewards" className="font-bold text-link hover:underline">Open rewards</Link>
+        {admin && (
+          <Card data-rewards-card>
+            <CardHeader><CardTitle>Rewards</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-3 gap-3 text-sm">
+              <div><span className="block text-on-surface-variant">To approve</span><b>{formatInr(sum("PENDING"))}</b></div>
+              <div><span className="block text-on-surface-variant">To pay</span><b>{formatInr(sum("APPROVED"))}</b></div>
+              <div><span className="block text-on-surface-variant">Paid</span><b>{formatInr(sum("PAID"))}</b></div>
+              <p className="col-span-3 text-xs text-on-surface-variant">
+                {p.payoutDetails ? "PAN and bank details added." : "No PAN and bank details yet — they add them in the LeadBridge app."}{" "}
+                <Link href={`/dashboard/rewards/${p.id}`} className="font-bold text-link hover:underline">Open statement</Link>
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card className={admin ? "lg:col-span-2" : undefined} data-partner-leads>
+          <CardHeader>
+            <CardTitle>Leads</CardTitle>
+            <p className="text-sm text-on-surface-variant">
+              {p._count.leads} from this partner{p._count.leads > p.leads.length ? ` · latest ${p.leads.length}` : ""} ·{" "}
+              <Link href={`/dashboard/rewards/${p.id}`} className="text-link hover:underline">rewards by lead</Link>
             </p>
+          </CardHeader>
+          <CardContent>
+            {p.leads.length === 0 ? (
+              <p className="text-sm text-on-surface-variant">No leads yet.</p>
+            ) : (
+              <ul className="flex flex-col divide-y divide-outline-variant text-sm">
+                {p.leads.map((l) => (
+                  <li key={l.id} className="flex items-center justify-between gap-3 py-2">
+                    <Link href={`/dashboard/leads/${l.id}`} className="font-medium hover:underline">{l.name}</Link>
+                    <span className="flex items-center gap-3 text-on-surface-variant">
+                      <span>{statusLabel(l.status)}</span>
+                      <span className="tabular-nums">{formatDate(l.createdAt.toISOString())}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
 

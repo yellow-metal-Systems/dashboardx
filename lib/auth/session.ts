@@ -1,8 +1,9 @@
 import { cookies } from "next/headers";
 import { getIronSession, type IronSession, type SessionOptions } from "iron-session";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { IS_PRODUCTION, SESSION_SECRET, SESSION_TTL_SECONDS } from "../env";
+import { prisma } from "../prisma";
 
 export type StaffSession = {
   userId?: string;
@@ -70,5 +71,32 @@ export async function requireStaff(): Promise<SignedInStaff> {
 export async function requireStaffOrThrow(): Promise<SignedInStaff> {
   const staff = await currentStaff();
   if (!staff) throw new Error("Not signed in.");
+  return staff;
+}
+
+/**
+ * Money (reward amounts, bank details, approving and paying) is for admins only.
+ * Read from the database every time, not the session cookie: an admin who is
+ * demoted or deactivated loses access at once, not at their next login.
+ */
+export async function isAdmin(staff: Pick<SignedInStaff, "userId">): Promise<boolean> {
+  const row = await prisma.adminUser.findUnique({
+    where: { id: staff.userId },
+    select: { role: true, isActive: true },
+  });
+  return !!row && row.isActive && row.role === "admin";
+}
+
+/** For admin-only pages: a team member gets a plain 404, not a hint that the page exists. */
+export async function requireAdmin(): Promise<SignedInStaff> {
+  const staff = await requireStaff();
+  if (!(await isAdmin(staff))) notFound();
+  return staff;
+}
+
+/** For admin-only server actions. */
+export async function requireAdminOrThrow(): Promise<SignedInStaff> {
+  const staff = await requireStaffOrThrow();
+  if (!(await isAdmin(staff))) throw new Error("Only admins can do this.");
   return staff;
 }
