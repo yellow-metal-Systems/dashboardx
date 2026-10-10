@@ -110,9 +110,25 @@ db("partners and rewards (database)", () => {
     await expect(createApiKey(partnerId, "Second", null)).rejects.toThrow(/Turn the partner back on/);
   });
 
+  // A LOAN reward must belong to a lead (partner_rewards_kind_check, serverx
+  // migration 9), and lead_id is unique, so each one gets its own disbursed lead.
+  // Ids from YMLEAD9… so they never clash with the leads tests create by hand.
+  let rewardLeadSeq = 0;
   async function reward(partnerId: string, amount = 2000) {
+    rewardLeadSeq += 1;
+    const lead = await prisma.lead.create({
+      data: {
+        id: `YMLEAD9${String(rewardLeadSeq).padStart(9, "0")}`,
+        name: `Reward borrower ${rewardLeadSeq}`,
+        mobile: `97000${String(rewardLeadSeq).padStart(5, "0")}`,
+        pinCode: "560001",
+        partnerId,
+        status: "DISBURSED",
+        disbursementAmount: amount * 100,
+      },
+    });
     return prisma.partnerReward.create({
-      data: { kind: "LOAN", partnerId, baseAmount: amount * 100, percent: 1, amount, disbursedAt: new Date() },
+      data: { kind: "LOAN", partnerId, leadId: lead.id, baseAmount: amount * 100, percent: 1, amount, disbursedAt: new Date() },
     });
   }
   const bank = (partnerId: string, accountNumber = "123456789012") =>
