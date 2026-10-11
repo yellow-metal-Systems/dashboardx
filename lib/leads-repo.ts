@@ -189,7 +189,30 @@ export type LeadDetail = {
   activities: LeadActivity[];
   duplicates: Lead[];
   webhookEvents: LeadWebhookEvent[];
+  /** Display names for activity actors that are ids ("partner:<user id>", "api:<key prefix>"). */
+  actorNames: Record<string, string>;
 };
+
+/**
+ * serverx records partner-app actions as "partner:<partner user id>" and API
+ * submissions as "api:<key prefix>"; look up who those are so the timeline
+ * reads "Asha Rao" instead of an id.
+ */
+async function resolveActorNames(actors: (string | null)[]): Promise<Record<string, string>> {
+  const ids = (prefix: string) => Array.from(new Set(actors.filter((a) => a?.startsWith(prefix)).map((a) => a!.slice(prefix.length))));
+  const userIds = ids("partner:");
+  const keyPrefixes = ids("api:");
+  const [users, keys] = await Promise.all([
+    userIds.length ? prisma.partnerUser.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true } }) : [],
+    keyPrefixes.length
+      ? prisma.partnerApiKey.findMany({ where: { keyPrefix: { in: keyPrefixes } }, select: { keyPrefix: true, label: true } })
+      : [],
+  ]);
+  return Object.fromEntries([
+    ...users.map((u) => [`partner:${u.id}`, u.name] as const),
+    ...keys.map((k) => [`api:${k.keyPrefix}`, `API key “${k.label}”`] as const),
+  ]);
+}
 
 export async function getLeadDetail(id: string): Promise<LeadDetail | null> {
     const row = await prisma.lead.findUnique({
@@ -208,10 +231,16 @@ export async function getLeadDetail(id: string): Promise<LeadDetail | null> {
     orderBy: { createdAt: "desc" },
   });
 
-  const [firsts, lms, branches] = await Promise.all([firstLeadIds([row.mobile]), lmsStatusTimes([row.id]), fetchBranchNames()]);
+  const [firsts, lms, branches, actorNames] = await Promise.all([
+    firstLeadIds([row.mobile]),
+    lmsStatusTimes([row.id]),
+    fetchBranchNames(),
+    resolveActorNames(row.activities.map((a) => a.actor)),
+  ]);
   return {
     lead: toLead(row, firsts.has(row.id), lms.get(row.id) ?? null, branches),
     activities: row.activities.map(toActivity),
+    actorNames,
     duplicates: duplicateRows.map((d) => toLead(d, firsts.has(d.id))),
     webhookEvents: row.webhookEvents.map(toWebhookEvent),
   };

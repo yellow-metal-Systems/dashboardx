@@ -25,10 +25,11 @@ type Props = {
   leadId: string;
   leadName: string;
   status: string;
+  isAarthik: boolean;
   className?: string;
 };
 
-export function LeadStatusSelect({ leadId, leadName, status, className }: Props) {
+export function LeadStatusSelect({ leadId, leadName, status, isAarthik, className }: Props) {
   const [value, setValue] = useState<string>(status);
   const [error, setError] = useState<string | null>(null);
   const [askingDisbursement, setAskingDisbursement] = useState(false);
@@ -113,6 +114,7 @@ export function LeadStatusSelect({ leadId, leadName, status, className }: Props)
       <DisbursementDialog
         open={askingDisbursement}
         leadName={leadName}
+        isAarthik={isAarthik}
         onCancel={() => setAskingDisbursement(false)}
         onConfirm={(details) => {
           setAskingDisbursement(false);

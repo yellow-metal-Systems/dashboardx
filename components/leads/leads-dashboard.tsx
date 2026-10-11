@@ -419,6 +419,7 @@ export function LeadsDashboard({ initialLeads, partners, lmsToMatch = 0 }: Props
       <DisbursementDialog
         open={disbursingId !== null}
         leadName={leads.find((l) => l.id === disbursingId)?.name ?? "this lead"}
+        isAarthik={leads.find((l) => l.id === disbursingId)?.source === "AARTHIKLABS"}
         onCancel={() => setDisbursingId(null)}
         onConfirm={(details) => {
           const id = disbursingId;

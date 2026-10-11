@@ -193,7 +193,7 @@ export const SOURCE_LABELS: Record<LeadSource, string> = {
 };
 
 /**
- * The provisional ONDC offer's plan type. Stored as text by serverx, so an
+ * The provisional offer's plan type. Stored as text by serverx, so an
  * unexpected value falls back to the raw string rather than rendering blank.
  */
 const OFFER_PLAN_LABELS: Record<string, string> = {
@@ -205,7 +205,11 @@ export function offerPlanLabel(productType: string): string {
   return OFFER_PLAN_LABELS[productType] ?? productType;
 }
 
-/** True when AarthikLabs sent any part of a provisional offer (Flow 4 sends none). */
+/**
+ * True when the lead carries any part of a provisional offer: the plan the
+ * borrower picked on ONDC (AarthikLabs; Flow 4 sends none), or the plan the
+ * partner chose in the web app or API, priced from our rate table.
+ */
 export function hasProvisionalOffer(lead: Lead): boolean {
   return (
     lead.offerProductType !== null ||
@@ -322,16 +326,37 @@ export function submittedLabel(iso: string, now: Date = new Date()): string {
 }
 
 /** How long a lead keeps the green "New" pill in the Leads table. */
+/** Where the provisional offer came from, worded for staff. */
+export function provisionalOfferNote(source: LeadSource): string {
+  const from =
+    source === "AARTHIKLABS"
+      ? "Provisional offer the borrower selected on ONDC."
+      : "Provisional offer at the plan the partner chose, priced from our rate table.";
+  return `${from} The branch confirms the final plan after assessing the gold.`;
+}
+
 export const NEW_LEAD_MINUTES = 45;
 
 export function isNewLead(iso: string, now: Date = new Date()): boolean {
   return now.getTime() - new Date(iso).getTime() < NEW_LEAD_MINUTES * 60_000;
 }
 
-/** Who made a timeline change, as staff read it: "LMS", a staff email, or the raw actor. */
-export function actorLabel(actor: string): string {
+const SYSTEM_ACTOR_LABELS: Record<string, string> = {
+  "system:aarthiklabs": "AarthikLabs",
+  "system:webhook": "webhook delivery",
+  "system:status-bridge": "the system",
+  "system:internal-api": "the system",
+  "system:lead-timeout": "automatic expiry",
+};
+
+/**
+ * Who made a timeline change, as staff read it: "LMS", a staff email, a partner
+ * user's or API key's name (from `names`, resolved by getLeadDetail), or the
+ * raw actor when it can't be resolved (e.g. the user was since deleted).
+ */
+export function actorLabel(actor: string, names: Record<string, string> = {}): string {
   if (actor === "lms" || actor === "system:lms") return "LMS";
-  return actor.replace(/^staff:/, "");
+  return names[actor] ?? SYSTEM_ACTOR_LABELS[actor] ?? actor.replace(/^staff:/, "");
 }
 
 export function joinAddress(line1: string | null, line2: string | null): string {

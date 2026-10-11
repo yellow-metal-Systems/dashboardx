@@ -3,11 +3,13 @@ import { describe, it, expect } from "vitest";
 import {
   LEAD_STATUSES,
   STATUS_BADGE_CLASSES,
+  actorLabel,
   hasProvisionalOffer,
   isTerminalStatus,
   joinAddress,
   offerPlanLabel,
   parseLeadStatus,
+  provisionalOfferNote,
   statusBadgeClass,
   statusLabel,
   submittedLabel,
@@ -129,6 +131,29 @@ describe("provisional ONDC offer", () => {
     expect(offerPlanLabel("BULLET")).toBe("Bullet · 68% LTV");
     expect(offerPlanLabel("MONTHLY")).toBe("Monthly · 75% LTV");
     expect(offerPlanLabel("SOMETHING_NEW")).toBe("SOMETHING_NEW");
+  });
+
+  it("says ONDC only for AarthikLabs leads", () => {
+    expect(provisionalOfferNote("AARTHIKLABS")).toMatch(/selected on ONDC/);
+    for (const source of ["PARTNER", "PARTNER_API"] as const) {
+      expect(provisionalOfferNote(source)).not.toMatch(/ONDC/);
+      expect(provisionalOfferNote(source)).toMatch(/plan the partner chose/);
+    }
+  });
+});
+
+describe("actorLabel", () => {
+  it("shows resolved names for partner users and API keys, and readable system actors", () => {
+    const names = { "partner:cuser1": "Asha Rao", "api:9zaknnE-": "API key “Production”" };
+    expect(actorLabel("partner:cuser1", names)).toBe("Asha Rao");
+    expect(actorLabel("api:9zaknnE-", names)).toBe("API key “Production”");
+    expect(actorLabel("system:aarthiklabs")).toBe("AarthikLabs");
+    expect(actorLabel("lms")).toBe("LMS");
+    expect(actorLabel("staff:a@y.co")).toBe("a@y.co");
+  });
+
+  it("falls back to the raw actor when a name can't be resolved", () => {
+    expect(actorLabel("partner:gone")).toBe("partner:gone");
   });
 });
 

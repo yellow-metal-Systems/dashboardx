@@ -19,6 +19,7 @@ import {
   formatInr,
   hasProvisionalOffer,
   offerPlanLabel,
+  provisionalOfferNote,
   leadRef,
   statusLabel,
   actorLabel,
@@ -52,7 +53,7 @@ const timeFormatter = new Intl.DateTimeFormat("en-IN", {
 export default async function LeadPage({ params }: { params: { id: string } }) {
   const detail = await getLeadDetail(params.id);
   if (!detail) notFound();
-  const { lead, activities, duplicates, webhookEvents } = detail;
+  const { lead, activities, duplicates, webhookEvents, actorNames } = detail;
 
   const ref = leadRef(lead);
   const isAarthik = lead.source === "AARTHIKLABS";
@@ -182,8 +183,7 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
               {hasProvisionalOffer(lead) && (
                 <div className="flex flex-col gap-3 border-t border-outline-variant pt-4">
                   <p className="text-sm text-on-surface-variant">
-                    Provisional offer the borrower selected on ONDC. The branch
-                    confirms the final plan after assessing the gold.
+                    {provisionalOfferNote(lead.source)}
                   </p>
                   <dl className="grid gap-4 sm:grid-cols-2">
                     {lead.offerProductType && (
@@ -230,7 +230,7 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
                       <span className="text-on-surface">
                         {a.message}
                         {a.actor && (
-                          <span className="text-on-surface-variant"> by {actorLabel(a.actor)}</span>
+                          <span className="text-on-surface-variant"> by {actorLabel(a.actor, actorNames)}</span>
                         )}
                       </span>
                     </li>
@@ -249,6 +249,7 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
                 leadId={lead.id}
                 leadName={lead.name}
                 status={lead.status}
+                isAarthik={isAarthik}
                 className="w-full"
               />
               {lead.lmsUpdatedAt && (

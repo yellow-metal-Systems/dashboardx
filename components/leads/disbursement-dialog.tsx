@@ -24,6 +24,8 @@ export type DisbursementInput = {
 type Props = {
   open: boolean;
   leadName: string;
+  /** Only AarthikLabs leads have their status (and these figures) sent to AarthikLabs. */
+  isAarthik: boolean;
   onCancel: () => void;
   onConfirm: (details: DisbursementInput) => void;
 };
@@ -38,13 +40,14 @@ function todayIso(): string {
 }
 
 /**
- * Captures the disbursement figures that go to AarthikLabs.
+ * Captures the disbursement figures: sent to AarthikLabs for their leads, and
+ * the base of the partner's reward for partner leads.
  *
  * These fields have always existed on the status-update contract and in the
  * webhook payload, but nothing in the UI ever collected them — so every DISBURSED
  * webhook shipped nulls for the amount, date, loan id and tenure.
  */
-export function DisbursementDialog({ open, leadName, onCancel, onConfirm }: Props) {
+export function DisbursementDialog({ open, leadName, isAarthik, onCancel, onConfirm }: Props) {
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(todayIso());
   const [loanId, setLoanId] = useState("");
@@ -85,8 +88,10 @@ export function DisbursementDialog({ open, leadName, onCancel, onConfirm }: Prop
         <DialogHeader>
           <DialogTitle>Record disbursement</DialogTitle>
           <DialogDescription>
-            These figures are sent to AarthikLabs with the status update, and cannot
-            be changed afterwards — {leadName} becomes final once disbursed.
+            {isAarthik
+              ? "These figures are sent to AarthikLabs with the status update"
+              : "The partner's reward is worked out from this amount"}
+            , and cannot be changed afterwards — {leadName} becomes final once disbursed.
           </DialogDescription>
         </DialogHeader>
 

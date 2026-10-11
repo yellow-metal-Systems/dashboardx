@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 
 import { prisma } from "@/lib/prisma";
-import { firstLeadIds, listLeads, lmsStatusTimes } from "@/lib/leads-repo";
+import { firstLeadIds, getLeadDetail, listLeads, lmsStatusTimes } from "@/lib/leads-repo";
 
 // "New customer" = the first lead ever from a mobile, decided across the whole
 // table (the same rule partner rewards use). SKIPS without TEST_DATABASE_URL.
@@ -51,5 +51,18 @@ db("new customer (database)", () => {
     await act("YMLEAD0000000011", "staff:a@y.co", "2026-10-03T10:00:00Z");
     const tags = await lmsStatusTimes(["YMLEAD0000000010", "YMLEAD0000000011"]);
     expect(Array.from(tags.entries())).toEqual([["YMLEAD0000000010", "2026-10-02T10:00:00.000Z"]]);
+  });
+
+  it("resolves partner-user and API-key actors to names for the timeline", async () => {
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE partner_api_keys, partner_invites, partner_users, partners RESTART IDENTITY CASCADE`);
+    const partner = await prisma.partner.create({ data: { orgName: "Acme Leads", contactEmail: "acme@x.in", status: "active" } });
+    const user = await prisma.partnerUser.create({ data: { partnerId: partner.id, name: "Asha Rao", mobile: "9800000020" } });
+    await prisma.partnerApiKey.create({ data: { partnerId: partner.id, label: "Production", keyPrefix: "pfx12345", keyHash: "h" } });
+    await lead("YMLEAD0000000020", "9800000021", "2026-10-01T10:00:00Z");
+    for (const actor of [`partner:${user.id}`, "api:pfx12345", "partner:deleted-user", "staff:a@y.co"]) {
+      await prisma.leadActivity.create({ data: { leadId: "YMLEAD0000000020", kind: "SUBMITTED", message: "m", actor } });
+    }
+    const detail = await getLeadDetail("YMLEAD0000000020");
+    expect(detail?.actorNames).toEqual({ [`partner:${user.id}`]: "Asha Rao", "api:pfx12345": "API key “Production”" });
   });
 });
