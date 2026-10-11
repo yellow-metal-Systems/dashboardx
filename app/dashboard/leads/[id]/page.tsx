@@ -229,7 +229,8 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
                       </time>
                       <span className="text-on-surface">
                         {a.message}
-                        {a.actor && (
+                        {a.actor && !a.message.includes(actorLabel(a.actor, actorNames)) && (
+                          // Skipped when the message already names them ("…by Asha Rao").
                           <span className="text-on-surface-variant"> by {actorLabel(a.actor, actorNames)}</span>
                         )}
                       </span>
