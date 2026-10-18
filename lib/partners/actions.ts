@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache";
 import type { PartnerType } from "@prisma/client";
 
-import { requireAdminOrThrow, requireStaffOrThrow } from "@/lib/auth/session";
+import { requirePermissionOrThrow } from "@/lib/auth/session";
+import type { Permission } from "@/lib/auth/roles";
 import { LEADBRIDGE_URL } from "@/lib/env";
 import { ApiKeyError, createApiKey, revokeApiKey } from "./api-keys";
+import { ApplicationError, approveApplication, rejectApplication } from "./applications";
 import { AdminError, PartnerAccountError, onboardPartner, resendInvite, setGstinRequired, setPartnerEnabled } from "./onboarding";
 import { RewardError, approveReward, markRewardPaid, rejectReward, revealPayoutDetails, setRewardRules } from "./rewards";
 
@@ -25,22 +27,20 @@ function inviteUrl(token: string): string {
 const text = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 
 export async function addPartnerAction(_prev: FormState, fd: FormData): Promise<FormState> {
-  const staff = await requireStaffOrThrow();
+  const staff = await requirePermissionOrThrow("partners.manage");
   const personName = text(fd, "personName");
   const type: PartnerType = text(fd, "type") === "ORGANISATION" ? "ORGANISATION" : "INDIVIDUAL";
-  const orgName = type === "ORGANISATION" ? text(fd, "orgName") : personName;
-  if (type === "ORGANISATION" && !orgName) return { error: "Enter the organisation's name." };
-  const contactEmail = text(fd, "email");
-  if (!/^\S+@\S+\.\S+$/.test(contactEmail)) return { error: "Enter a valid email address." };
   try {
+    // Fields an individual doesn't have (email, ONDC, GSTIN) are ignored for them.
     const { token } = await onboardPartner({
-      orgName,
       type,
-      isOndc: fd.get("isOndc") === "on",
-      gstinRequired: fd.get("gstinRequired") === "on",
-      contactEmail,
       personName,
       mobile: text(fd, "mobile"),
+      town: text(fd, "town"),
+      orgName: text(fd, "orgName"),
+      contactEmail: text(fd, "email"),
+      isOndc: fd.get("isOndc") === "on",
+      gstinRequired: fd.get("gstinRequired") === "on",
       staffEmail: staff.email,
     });
     revalidatePath("/dashboard/partners", "layout");
@@ -52,7 +52,7 @@ export async function addPartnerAction(_prev: FormState, fd: FormData): Promise<
 }
 
 export async function resendInviteAction(_prev: FormState, fd: FormData): Promise<FormState> {
-  const staff = await requireStaffOrThrow();
+  const staff = await requirePermissionOrThrow("partners.manage");
   try {
     const token = await resendInvite(text(fd, "partnerUserId"), staff.email);
     return { error: null, inviteUrl: inviteUrl(token), inviteFor: text(fd, "name") };
@@ -63,20 +63,25 @@ export async function resendInviteAction(_prev: FormState, fd: FormData): Promis
 }
 
 export async function setGstinRequiredAction(fd: FormData): Promise<void> {
-  await requireStaffOrThrow();
-  await setGstinRequired(text(fd, "partnerId"), fd.get("required") === "true");
+  await requirePermissionOrThrow("partners.manage");
+  try {
+    await setGstinRequired(text(fd, "partnerId"), fd.get("required") === "true");
+  } catch (err) {
+    // The form has no error slot; the page simply shows the switch unchanged.
+    if (!(err instanceof AdminError)) throw err;
+  }
   revalidatePath("/dashboard/partners", "layout");
 }
 
 export async function setPartnerEnabledAction(fd: FormData): Promise<void> {
-  await requireStaffOrThrow();
+  await requirePermissionOrThrow("partners.manage");
   await setPartnerEnabled(text(fd, "partnerId"), fd.get("enabled") === "true");
   revalidatePath("/dashboard/partners", "layout");
 }
 
 /** Creates an organisation API key. The full key is returned once, never stored. */
 export async function createApiKeyAction(_prev: KeyFormState, fd: FormData): Promise<KeyFormState> {
-  const staff = await requireStaffOrThrow();
+  const staff = await requirePermissionOrThrow("partners.manage");
   try {
     const { key } = await createApiKey(text(fd, "partnerId"), text(fd, "label"), staff.email);
     revalidatePath("/dashboard/partners", "layout");
@@ -88,15 +93,19 @@ export async function createApiKeyAction(_prev: KeyFormState, fd: FormData): Pro
 }
 
 export async function revokeApiKeyAction(fd: FormData): Promise<void> {
-  await requireStaffOrThrow();
+  await requirePermissionOrThrow("partners.manage");
   await revokeApiKey(text(fd, "keyId"));
   revalidatePath("/dashboard/partners", "layout");
 }
 
-// Money is admin-only: each action re-checks the role in the database itself
-// (a server action is a POST endpoint that can be called without the page).
-async function adminAction(fn: (email: string) => Promise<void>): Promise<RewardFormState> {
-  const admin = await requireAdminOrThrow();
+// Money needs rewards.manage (rules: rewardRules.manage): each action re-checks the
+// role in the database itself (a server action is a POST endpoint that can be
+// called without the page).
+async function adminAction(
+  fn: (email: string) => Promise<void>,
+  permission: Permission = "rewards.manage"
+): Promise<RewardFormState> {
+  const admin = await requirePermissionOrThrow(permission);
   try {
     await fn(admin.email);
   } catch (err) {
@@ -137,7 +146,8 @@ export async function setRewardRulesAction(_prev: RewardFormState, fd: FormData)
       },
       text(fd, "reason"),
       email
-    )
+    ),
+    "rewardRules.manage"
   );
 }
 
@@ -145,11 +155,40 @@ export type RevealState = { error: string | null; details?: { pan: string; accou
 
 /** Full PAN + account number for an admin about to pay; every reveal is logged. */
 export async function revealPayoutDetailsAction(_prev: RevealState, fd: FormData): Promise<RevealState> {
-  const admin = await requireAdminOrThrow();
+  const admin = await requirePermissionOrThrow("rewards.manage");
   try {
     return { error: null, details: await revealPayoutDetails(text(fd, "partnerId"), admin.email) };
   } catch (err) {
     if (err instanceof RewardError) return { error: err.message };
+    throw err;
+  }
+}
+
+// --- self-service sign-ups (partners.manage) -------------------------------------
+
+export type ApplicationFormState = { error: string | null; inviteUrl?: string; inviteFor?: string; ok?: boolean };
+
+/** Approves a sign-up: creates the partner and returns their invite link, shown once like Add partner's. */
+export async function approveApplicationAction(_prev: ApplicationFormState, fd: FormData): Promise<ApplicationFormState> {
+  const staff = await requirePermissionOrThrow("partners.manage");
+  try {
+    const { token, name } = await approveApplication(text(fd, "applicationId"), staff.email);
+    revalidatePath("/dashboard/partners", "layout");
+    return { error: null, inviteUrl: inviteUrl(token), inviteFor: name };
+  } catch (err) {
+    if (err instanceof ApplicationError) return { error: err.message };
+    throw err;
+  }
+}
+
+export async function rejectApplicationAction(_prev: ApplicationFormState, fd: FormData): Promise<ApplicationFormState> {
+  const staff = await requirePermissionOrThrow("partners.manage");
+  try {
+    await rejectApplication(text(fd, "applicationId"), text(fd, "reason"), staff.email);
+    revalidatePath("/dashboard/partners", "layout");
+    return { error: null, ok: true };
+  } catch (err) {
+    if (err instanceof ApplicationError) return { error: err.message };
     throw err;
   }
 }
