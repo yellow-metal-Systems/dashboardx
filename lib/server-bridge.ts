@@ -198,3 +198,26 @@ export async function resolveLmsEvent(
     return { ok: false, error: "Couldn't reach the lead service. Try again." };
   }
 }
+
+/**
+ * Our rate table's annual rate for a plan and amount (serverx /loan-quote), used
+ * when staff record a disbursal's plan without typing its rate. Null when serverx
+ * is unreachable or the amount is outside the slabs: the plan is still saved,
+ * just without a rate.
+ */
+export async function fetchPlanRate(plan: "BULLET" | "MONTHLY", amount: number): Promise<number | null> {
+  if (!isConfigured()) return null;
+  try {
+    const qs = new URLSearchParams({ plan, loan_amount: String(amount) });
+    const res = await fetch(`${SERVER_BASE_URL}/api/internal/loan-quote?${qs}`, {
+      headers: { "x-api-key": INTERNAL_API_KEY },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { roi_percent_pa?: number | null };
+    return body.roi_percent_pa ?? null;
+  } catch {
+    return null;
+  }
+}

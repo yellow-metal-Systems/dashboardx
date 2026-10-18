@@ -59,6 +59,7 @@ export function toLead(
     addressLine2: row.addressLine2,
     pinCode: row.pinCode,
     loanAmount: num(row.loanAmount),
+    loanAmountEstimated: row.loanAmountEstimated,
     dob: dateOnly(row.dob),
     goldGrams: num(row.goldGrams),
     offerAmount: num(row.offerAmount),
@@ -79,6 +80,8 @@ export function toLead(
     loanConfirmedAt: row.loanConfirmedAt?.toISOString() ?? null,
     disbursementAmount: num(row.disbursementAmount),
     disbursementDate: dateOnly(row.disbursementDate),
+    disbursedPlan: row.disbursedPlan,
+    disbursedRoiPercentPa: num(row.disbursedRoiPercentPa),
     productType: row.productType,
     tenure: row.tenure,
     tenureUnit: row.tenureUnit,
@@ -348,6 +351,8 @@ export type DisbursementDetails = {
   amount?: number;
   date?: string;
   tenure?: number;
+  plan?: "BULLET" | "MONTHLY";
+  roiPercentPa?: number;
 };
 
 export class TerminalStatusError extends Error {
@@ -403,6 +408,8 @@ export async function updateLeadStatusRepo(
         ...(disbursement?.amount !== undefined ? { disbursementAmount: disbursement.amount } : {}),
         ...(disbursement?.date ? { disbursementDate: new Date(disbursement.date) } : {}),
         ...(disbursement?.tenure !== undefined ? { tenure: disbursement.tenure } : {}),
+        ...(disbursement?.plan ? { disbursedPlan: disbursement.plan } : {}),
+        ...(disbursement?.roiPercentPa !== undefined ? { disbursedRoiPercentPa: disbursement.roiPercentPa } : {}),
         // Recording a disbursal is also the branch manager confirming the loan.
         ...(status === "DISBURSED" && disbursement?.amount !== undefined
           ? {

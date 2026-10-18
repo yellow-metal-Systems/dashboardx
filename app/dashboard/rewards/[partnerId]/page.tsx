@@ -8,7 +8,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ApproveReward, MarkPaid, RejectReward, RevealDetails } from "@/components/rewards/reward-controls";
 import { RewardPill } from "@/components/rewards/reward-pill";
-import { isAdmin, requireStaff } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/session";
 import { formatDate, formatDateTime, formatInr, statusLabel } from "@/lib/leads";
 import { getPartnerRewardStatement, payoutDateFor, type StatementReward } from "@/lib/partners/rewards";
 import { cn } from "@/lib/utils";
@@ -36,8 +36,9 @@ function money(r: StatementReward) {
 // One partner's rewards: every lead they sent, with its reward. Admins see the
 // money, the payee and the audit log, and act here; team members see statuses.
 export default async function PartnerRewardsPage({ params }: { params: { partnerId: string } }) {
-  const staff = await requireStaff();
-  const admin = await isAdmin(staff);
+  // "admin" here means may see amounts and act on rewards (rewards.manage).
+  const access = await requirePermission("rewards.view");
+  const admin = access.permissions.includes("rewards.manage");
   const st = await getPartnerRewardStatement(params.partnerId, admin);
   if (!st) notFound();
   const { partner, leads, bonuses, payee, audit } = st;

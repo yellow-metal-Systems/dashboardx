@@ -14,6 +14,7 @@
 import { PrismaClient } from "@prisma/client";
 
 import { hashPassword, validatePasswordStrength } from "../lib/auth/password";
+import { parseRole } from "../lib/auth/roles";
 
 const prisma = new PrismaClient();
 
@@ -21,7 +22,9 @@ async function main(): Promise<void> {
   const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
   const name = process.env.ADMIN_NAME?.trim() || "Yellow Metal staff";
-  const role = process.env.ADMIN_ROLE?.trim() === "staff" ? "staff" : "admin";
+  // admin (default) | financial_operator | customer_support. Later colleagues are
+  // better invited from the Team page, which needs no shell access.
+  const role = parseRole(process.env.ADMIN_ROLE?.trim()) ?? "admin";
 
   if (!email || !password) {
     throw new Error(

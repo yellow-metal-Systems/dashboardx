@@ -48,10 +48,12 @@ db("partners and rewards (database)", () => {
 
   const individual = (mobile = "+91 98111 11111") =>
     onboardPartner({
-      orgName: "",
       type: "INDIVIDUAL",
-      isOndc: false,
+      // Ignored for an individual (standup 2026-10-15): mobile and town only.
       contactEmail: "Priya@Example.com",
+      isOndc: true,
+      gstinRequired: true,
+      town: "Chikkaballapur",
       personName: "Priya Sharma",
       mobile,
       staffEmail: "asha@yellowmetal.example",
@@ -60,7 +62,7 @@ db("partners and rewards (database)", () => {
   it("onboards an individual named after the person, as invited, storing only the invite's hash", async () => {
     const { partnerId, partnerUserId, token } = await individual();
     const p = await prisma.partner.findUniqueOrThrow({ where: { id: partnerId }, include: { users: true } });
-    expect(p).toMatchObject({ orgName: "Priya Sharma", contactEmail: "priya@example.com", contactMobile: "9811111111", status: "invited" });
+    expect(p).toMatchObject({ orgName: "Priya Sharma", contactEmail: null, town: "Chikkaballapur", contactMobile: "9811111111", status: "invited", isOndc: false, gstinRequired: false });
     expect(p.users.map((u) => [u.mobile, u.status])).toEqual([["9811111111", "invited"]]);
     const invite = await prisma.partnerInvite.findFirstOrThrow({ where: { partnerUserId } });
     expect(invite.tokenHash).toBe(hashInviteToken(token));
@@ -253,7 +255,7 @@ db("partners and rewards (database)", () => {
     const mk = (email: string, role: string, isActive = true) =>
       prisma.adminUser.create({ data: { email, name: email, passwordHash: "x", role, isActive } });
     const admin = await mk("a@y.co", "admin");
-    const staff = await mk("s@y.co", "staff");
+    const staff = await mk("s@y.co", "financial_operator");
     const gone = await mk("g@y.co", "admin", false);
     expect(await isAdmin({ userId: admin.id })).toBe(true);
     expect(await isAdmin({ userId: staff.id })).toBe(false);

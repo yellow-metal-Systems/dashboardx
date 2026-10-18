@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { LmsResolveForm } from "@/components/leads/lms-resolve-form";
-import { requireStaff } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/session";
 import { formatDate, formatDateTime, formatInr, statusLabel } from "@/lib/leads";
 import { prisma } from "@/lib/prisma";
 
@@ -16,7 +16,7 @@ const EVENT_LABEL = { DISBURSED: "Disbursed", REJECTED: "Rejected", CANCELLED: "
 // LMS updates no lead could be matched to: no YMLEAD number on the loan, and no
 // single open lead with that mobile. Staff pick the lead; serverx applies it.
 export default async function LmsReviewPage() {
-  await requireStaff();
+  await requirePermission("lms.resolve");
   const events = await prisma.lmsLoanEvent.findMany({
     where: { outcome: { in: ["UNMATCHED", "AMBIGUOUS"] } },
     orderBy: { receivedAt: "asc" },

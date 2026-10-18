@@ -50,7 +50,8 @@ async function createInvite(db: InviteDb, partnerUserId: string, createdBy: stri
  */
 export async function createPartnerWithInvite(input: {
   orgName: string;
-  contactEmail: string;
+  contactEmail: string | null;
+  town?: string | null;
   type: PartnerType;
   isOndc: boolean;
   gstinRequired?: boolean;
@@ -67,8 +68,9 @@ export async function createPartnerWithInvite(input: {
       const partner = await tx.partner.create({
         data: {
           orgName: input.orgName.trim(),
-          contactEmail: input.contactEmail.trim().toLowerCase(),
+          contactEmail: input.contactEmail?.trim().toLowerCase() || null,
           contactMobile: mobile,
+          town: input.town?.trim() || null,
           type: input.type,
           isOndc: input.isOndc,
           gstinRequired: input.gstinRequired ?? false,
@@ -117,23 +119,51 @@ export async function listPartners() {
   });
 }
 
+const EMAIL = /^\S+@\S+\.\S+$/;
+
+/**
+ * Adds a partner from LeadDesk (standup 2026-10-15). What is collected depends
+ * on who they are:
+ *   - an individual: name, mobile and town only. No email (rarely used in tier
+ *     3-4 towns), no ONDC, no GSTIN — their leads are personal loans.
+ *   - an organisation: company name, contact person, email, ONDC and the
+ *     customer-GSTIN switch; it usually integrates through an API key.
+ */
 export async function onboardPartner(input: {
-  orgName: string;
   type: PartnerType;
-  isOndc: boolean;
-  gstinRequired?: boolean;
-  contactEmail: string;
   personName: string;
   mobile: string;
+  town?: string;
+  orgName?: string;
+  contactEmail?: string;
+  isOndc?: boolean;
+  gstinRequired?: boolean;
   staffEmail: string;
 }) {
+  if (input.type === "INDIVIDUAL") {
+    if (!input.town?.trim()) throw new PartnerAccountError("Enter the town they work in.");
+    return createPartnerWithInvite({
+      orgName: input.personName,
+      contactEmail: null,
+      town: input.town,
+      type: "INDIVIDUAL",
+      isOndc: false,
+      gstinRequired: false,
+      user: { name: input.personName, mobile: input.mobile },
+      createdBy: input.staffEmail,
+    });
+  }
+  if (!input.orgName?.trim()) throw new PartnerAccountError("Enter the organisation's name.");
+  const email = input.contactEmail?.trim() ?? "";
+  if (!EMAIL.test(email)) throw new PartnerAccountError("Enter a valid email address.");
   return createPartnerWithInvite({
-    orgName: input.orgName || input.personName,
-    contactEmail: input.contactEmail,
-    type: input.type,
-    isOndc: input.isOndc,
-    gstinRequired: input.gstinRequired,
-    user: { name: input.personName, mobile: input.mobile, email: input.contactEmail },
+    orgName: input.orgName,
+    contactEmail: email,
+    town: input.town,
+    type: "ORGANISATION",
+    isOndc: input.isOndc ?? false,
+    gstinRequired: input.gstinRequired ?? false,
+    user: { name: input.personName, mobile: input.mobile, email },
     createdBy: input.staffEmail,
   });
 }
@@ -178,7 +208,14 @@ export async function setPartnerEnabled(partnerId: string, enabled: boolean) {
   ]);
 }
 
-/** Staff switch: this partner's leads must include the customer's GSTIN (serverx enforces it). */
+/**
+ * Staff switch: this organisation's leads must include the customer's GSTIN
+ * (serverx enforces it). Not for individuals, whose leads are personal loans;
+ * serverx ignores the switch for them anyway.
+ */
 export async function setGstinRequired(partnerId: string, required: boolean) {
+  const partner = await prisma.partner.findUnique({ where: { id: partnerId }, select: { type: true } });
+  if (!partner) throw new AdminError("Partner not found.");
+  if (required && partner.type !== "ORGANISATION") throw new AdminError("Only organisations can require the customer's GSTIN.");
   await prisma.partner.update({ where: { id: partnerId }, data: { gstinRequired: required } });
 }

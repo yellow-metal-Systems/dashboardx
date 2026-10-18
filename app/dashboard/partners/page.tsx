@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AddPartnerDialog } from "@/components/partners/add-partner-dialog";
-import { requireStaff } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/session";
 import { PARTNER_STATUS_BADGE_CLASSES, formatDate } from "@/lib/leads";
 import { listPartners } from "@/lib/partners/onboarding";
 import { cn } from "@/lib/utils";
@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 const STATUS_LABEL: Record<string, string> = { invited: "Invited", active: "Active", disabled: "Turned off" };
 
 export default async function PartnersPage() {
-  await requireStaff();
+  await requirePermission("partners.view");
   const partners = await listPartners();
 
   return (

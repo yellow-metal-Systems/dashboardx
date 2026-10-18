@@ -85,7 +85,8 @@ export type ActivityKind =
 export type LeadPartner = {
   id: string;
   orgName: string;
-  contactEmail: string;
+  /** Null for individuals onboarded with a mobile number only. */
+  contactEmail: string | null;
 };
 
 export type LeadActivity = {
@@ -138,6 +139,8 @@ export type Lead = {
   addressLine2: string | null;
   pinCode: string;
   loanAmount: number | null;
+  /** True when the partner gave a gold weight and loanAmount is serverx's estimate from it. */
+  loanAmountEstimated: boolean;
   dob: string | null;
   goldGrams: number | null;
   offerAmount: number | null;
@@ -165,6 +168,9 @@ export type Lead = {
   loanConfirmedAt: string | null;
   disbursementAmount: number | null;
   disbursementDate: string | null;
+  /** The plan (BULLET | MONTHLY) and annual rate the loan was actually given on. */
+  disbursedPlan: string | null;
+  disbursedRoiPercentPa: number | null;
   productType: string;
   tenure: number | null;
   tenureUnit: string;
@@ -365,6 +371,15 @@ export function joinAddress(line1: string | null, line2: string | null): string 
 
 export function leadRef(lead: Pick<Lead, "leadNo">): string {
   return `YM-${lead.leadNo}`;
+}
+
+/**
+ * The one tag next to the customer's name (standup 2026-10-15): New for a
+ * borrower's first lead ever, Duplicate for any later one. (duplicateFlag marks
+ * every lead in a set, the first included, so it can't tell them apart.)
+ */
+export function customerTag(lead: Pick<Lead, "isNewCustomer">): "New" | "Duplicate" {
+  return lead.isNewCustomer ? "New" : "Duplicate";
 }
 
 export function duplicatesOf(lead: Lead, all: Lead[]): Lead[] {
