@@ -3,17 +3,18 @@ import { Suspense } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { IntegrationHealthBanner } from "@/components/integration-health-banner";
-import { requireStaff } from "@/lib/auth/session";
+import { staffAccess } from "@/lib/auth/session";
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Belt and braces with middleware.ts. Cheap (the session lives in the cookie,
-  // so there is no query) and it means a routing-config mistake cannot expose
-  // borrower PII.
-  const staff = await requireStaff();
+  // Belt and braces with middleware.ts, so a routing-config mistake cannot expose
+  // borrower PII. Reads the live role (one small query), so a member who has been
+  // turned off is signed out here rather than at their cookie's expiry.
+  // staff.permissions is what the sidebar should use to hide what a role can't open.
+  const staff = await staffAccess();
 
   return (
     <SidebarProvider>

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { prisma } from "../prisma";
+import { parseRole } from "./roles";
 import { getSession } from "./session";
 import { verifyPassword } from "./password";
 
@@ -59,7 +60,7 @@ export async function signIn(_prev: LoginState, formData: FormData): Promise<Log
   session.userId = user.id;
   session.email = user.email;
   session.name = user.name;
-  session.role = user.role === "admin" ? "admin" : "staff";
+  session.role = parseRole(user.role) ?? "customer_support";
   await session.save();
 
   await prisma.adminUser.update({

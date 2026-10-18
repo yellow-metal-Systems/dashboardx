@@ -2,17 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireStaffOrThrow } from "@/lib/auth/session";
+import { requirePermissionOrThrow } from "@/lib/auth/session";
 import { resolveLmsEvent } from "@/lib/server-bridge";
 
 export type ResolveState = { error: string | null; ok?: boolean };
 
 /**
  * Staff pick the lead for an LMS update that couldn't be matched. Matching is an
- * operations task (any staff); approving any resulting reward is still admin-only.
+ * operations task (lms.resolve); approving any resulting reward needs rewards.manage.
  */
 export async function resolveLmsEventAction(_prev: ResolveState, fd: FormData): Promise<ResolveState> {
-  const staff = await requireStaffOrThrow();
+  const staff = await requirePermissionOrThrow("lms.resolve");
   const eventId = String(fd.get("eventId") ?? "");
   const leadId = String(fd.get("leadId") ?? "").trim().toUpperCase();
   if (!/^YMLEAD\d{10}$/.test(leadId)) return { error: "Enter the lead's YMLEAD number, e.g. YMLEAD0000012345." };

@@ -4,12 +4,14 @@ import { notFound, redirect } from "next/navigation";
 
 import { IS_PRODUCTION, SESSION_SECRET, SESSION_TTL_SECONDS } from "../env";
 import { prisma } from "../prisma";
+import { can, parseRole, permissionsOf, type Permission, type StaffRole } from "./roles";
 
 export type StaffSession = {
   userId?: string;
   email?: string;
   name?: string;
-  role?: "admin" | "staff";
+  /** As at sign-in; display only. Access is always checked against the database. */
+  role?: StaffRole;
 };
 
 export const SESSION_COOKIE_NAME = "ym_admin_session";
@@ -37,7 +39,7 @@ export type SignedInStaff = {
   userId: string;
   email: string;
   name: string;
-  role: "admin" | "staff";
+  role: StaffRole;
 };
 
 /** The signed-in staff member, or null. */
@@ -48,7 +50,7 @@ export async function currentStaff(): Promise<SignedInStaff | null> {
     userId: session.userId,
     email: session.email,
     name: session.name ?? session.email,
-    role: session.role ?? "staff",
+    role: parseRole(session.role) ?? "customer_support",
   };
 }
 
@@ -98,5 +100,43 @@ export async function requireAdmin(): Promise<SignedInStaff> {
 export async function requireAdminOrThrow(): Promise<SignedInStaff> {
   const staff = await requireStaffOrThrow();
   if (!(await isAdmin(staff))) throw new Error("Only admins can do this.");
+  return staff;
+}
+
+// -----------------------------------------------------------------------------
+// Role-based access (lib/auth/roles.ts). Like isAdmin, the role is read from the
+// database on every check, so a role change or deactivation applies at once.
+// -----------------------------------------------------------------------------
+
+/** The member's current role, or null if their account is gone or turned off. */
+export async function roleOf(staff: Pick<SignedInStaff, "userId">): Promise<StaffRole | null> {
+  const row = await prisma.adminUser.findUnique({
+    where: { id: staff.userId },
+    select: { role: true, isActive: true },
+  });
+  return row && row.isActive ? parseRole(row.role) : null;
+}
+
+export type StaffAccess = SignedInStaff & { permissions: Permission[] };
+
+/** The signed-in member with their live role and permissions — for the nav and to hide controls. */
+export async function staffAccess(): Promise<StaffAccess> {
+  const staff = await requireStaff();
+  const role = await roleOf(staff);
+  if (!role) redirect("/login");
+  return { ...staff, role, permissions: permissionsOf(role) };
+}
+
+/** For pages: anyone without the permission gets a plain 404, not a hint that the page exists. */
+export async function requirePermission(permission: Permission): Promise<StaffAccess> {
+  const access = await staffAccess();
+  if (!access.permissions.includes(permission)) notFound();
+  return access;
+}
+
+/** For server actions: the check that actually protects the write. */
+export async function requirePermissionOrThrow(permission: Permission): Promise<SignedInStaff> {
+  const staff = await requireStaffOrThrow();
+  if (!can(await roleOf(staff), permission)) throw new Error("Your role does not allow this.");
   return staff;
 }

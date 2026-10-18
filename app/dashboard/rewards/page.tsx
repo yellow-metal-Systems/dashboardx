@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RewardRulesForm } from "@/components/rewards/reward-controls";
-import { isAdmin, requireStaff } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/session";
 import { formatDate, formatInr } from "@/lib/leads";
 import { currentRewardRules, listRewardPartners, rewardRulesHistory, type PartnerRewardRow } from "@/lib/partners/rewards";
 import { cn } from "@/lib/utils";
@@ -43,8 +43,9 @@ function Flags({ row }: { row: PartnerRewardRow }) {
 // Rewards grouped by partner. Admins see the money; team members see only how
 // many rewards are where — their data never includes an amount.
 export default async function RewardsPage({ searchParams }: { searchParams: { q?: string } }) {
-  const staff = await requireStaff();
-  const admin = await isAdmin(staff);
+  // "admin" here means may see amounts and act on rewards (rewards.manage).
+  const access = await requirePermission("rewards.view");
+  const admin = access.permissions.includes("rewards.manage");
   const [{ rows, totals, awaiting }, rules, history] = await Promise.all([
     listRewardPartners(admin),
     admin ? currentRewardRules() : Promise.resolve(null),

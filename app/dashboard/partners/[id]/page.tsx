@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { CreateApiKey, GstinRequiredToggle, ResendInvite, RevokeApiKey, TogglePartner } from "@/components/partners/partner-controls";
-import { isAdmin, requireStaff } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/session";
 import { PARTNER_STATUS_BADGE_CLASSES, formatDate, formatInr, statusLabel } from "@/lib/leads";
 import { prisma } from "@/lib/prisma";
 import { cn } from "@/lib/utils";
@@ -16,8 +16,8 @@ export const dynamic = "force-dynamic";
 const STATUS_LABEL: Record<string, string> = { invited: "Invited", active: "Active", disabled: "Turned off" };
 
 export default async function PartnerPage({ params }: { params: { id: string } }) {
-  const staff = await requireStaff();
-  const admin = await isAdmin(staff);
+  const access = await requirePermission("partners.view");
+  const admin = access.permissions.includes("rewards.manage");
   const p = await prisma.partner.findUnique({
     where: { id: params.id },
     include: {
