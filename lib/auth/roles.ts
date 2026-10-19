@@ -1,13 +1,12 @@
 // =============================================================================
-// LeadDesk roles and what each may do (standup 2026-10-15, Rahul):
+// LeadDesk roles and what each may do (standup 2026-10-15, confirmed 2026-10-19):
 //
-//   admin               everything, including partners, reward rules and the team
-//   financial_operator  leads, the LMS review queue, and rewards (approve, reject,
-//                       pay, see bank details) — no partners, rules or team
-//   customer_support    leads only: view and change status. No rewards, no partners.
+//   admin               everything, including partners, rewards, the LMS review
+//                       queue, reward rules and the team
+//   financial_operator  leads only: view them and change their status. Nothing else.
+//   customer_support    leads only, read-only: view them, change nothing.
 //
-// The exact split for financial_operator is our reading of the meeting and still
-// to be confirmed with Rahul; change it HERE and every page and action follows.
+// Change it HERE and every page and action follows.
 // Pages and server actions check a permission, never a role name.
 // =============================================================================
 
@@ -35,8 +34,8 @@ export type Permission = (typeof PERMISSIONS)[number];
 
 const GRANTS: Record<StaffRole, readonly Permission[]> = {
   admin: PERMISSIONS,
-  financial_operator: ["leads.view", "leads.update", "lms.resolve", "rewards.view", "rewards.manage"],
-  customer_support: ["leads.view", "leads.update"],
+  financial_operator: ["leads.view", "leads.update"],
+  customer_support: ["leads.view"],
 };
 
 /** A stored role, or null for anything unknown (a row from before migration 10 reads as customer_support). */

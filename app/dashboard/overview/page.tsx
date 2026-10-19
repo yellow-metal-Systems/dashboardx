@@ -5,6 +5,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { LEAD_STATUSES, statusLabel, type LeadStatus } from "@/lib/leads";
 import { getOverviewStats } from "@/lib/leads-repo";
+import { requirePermission } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,8 @@ function StatTile({
 }
 
 export default async function OverviewPage() {
+  // Shows top partners and the active-partner count: partner data, so admins only.
+  await requirePermission("partners.view");
   const s = await getOverviewStats();
   const trend =
     s.prior30Days === 0 ? null : pct(s.last30Days - s.prior30Days, s.prior30Days);

@@ -24,11 +24,11 @@ function Submit() {
 /** Add a lead generator or an organisation; returns a one-time invite link to send them. */
 export function AddPartnerDialog() {
   const [open, setOpen] = useState(false);
-  const [type, setType] = useState<"INDIVIDUAL" | "ORGANISATION">("INDIVIDUAL");
-  const [state, action] = useFormState<FormState, FormData>(addPartnerAction, { error: null });
+  // Bumped on every open, so the form starts empty instead of showing the last invite link.
+  const [round, setRound] = useState(0);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (next) setRound((r) => r + 1); }}>
       <DialogTrigger asChild>
         <Button variant="dark">
           <Plus /> Add partner
@@ -39,14 +39,25 @@ export function AddPartnerDialog() {
           <DialogTitle>Add partner</DialogTitle>
           <DialogDescription>They get a link to set a password in the LeadBridge app. It works once and expires in 7 days.</DialogDescription>
         </DialogHeader>
+        <AddPartnerForm key={round} onDone={() => setOpen(false)} />
+      </DialogContent>
+    </Dialog>
+  );
+}
 
+function AddPartnerForm({ onDone }: { onDone: () => void }) {
+  const [type, setType] = useState<"INDIVIDUAL" | "ORGANISATION">("INDIVIDUAL");
+  const [state, action] = useFormState<FormState, FormData>(addPartnerAction, { error: null });
+
+  return (
+      <>
         {state.inviteUrl ? (
           <div className="flex flex-col gap-3">
             <p className="text-sm text-on-surface">
               Send this link to <b>{state.inviteFor}</b> on WhatsApp or SMS:
             </p>
             <CopyField value={state.inviteUrl} label="Invite link" testId="invite-link" />
-            <Button variant="outline" onClick={() => setOpen(false)}>Done</Button>
+            <Button variant="outline" onClick={onDone}>Done</Button>
           </div>
         ) : (
           <form action={action}>
@@ -80,22 +91,30 @@ export function AddPartnerDialog() {
                 <FieldLabel htmlFor="p-mobile">Mobile (used to sign in)</FieldLabel>
                 <FieldContent><Input id="p-mobile" name="mobile" inputMode="tel" placeholder="98765 43210" required /></FieldContent>
               </Field>
-              <Field>
-                <FieldLabel htmlFor="p-email">Email</FieldLabel>
-                <FieldContent><Input id="p-email" name="email" type="email" required /></FieldContent>
-              </Field>
-              <label className="flex items-center gap-2 text-sm text-on-surface">
-                <input type="checkbox" name="isOndc" className="size-4 accent-black" /> ONDC participant
-              </label>
-              <label className="flex items-center gap-2 text-sm text-on-surface">
-                <input type="checkbox" name="gstinRequired" className="size-4 accent-black" /> Customer&apos;s GSTIN required on every lead
-              </label>
+              {type === "INDIVIDUAL" ? (
+                <Field>
+                  <FieldLabel htmlFor="p-town">Town</FieldLabel>
+                  <FieldContent><Input id="p-town" name="town" placeholder="Hoskote" required /></FieldContent>
+                </Field>
+              ) : (
+                <>
+                  <Field>
+                    <FieldLabel htmlFor="p-email">Email</FieldLabel>
+                    <FieldContent><Input id="p-email" name="email" type="email" required /></FieldContent>
+                  </Field>
+                  <label className="flex items-center gap-2 text-sm text-on-surface">
+                    <input type="checkbox" name="isOndc" className="size-4 accent-black" /> ONDC participant
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-on-surface">
+                    <input type="checkbox" name="gstinRequired" className="size-4 accent-black" /> Customer&apos;s GSTIN required on every lead
+                  </label>
+                </>
+              )}
             </FieldGroup>
             {state.error && <p role="alert" className="mt-4 text-sm font-medium text-error">{state.error}</p>}
             <div className="mt-6 flex justify-end"><Submit /></div>
           </form>
         )}
-      </DialogContent>
-    </Dialog>
+      </>
   );
 }
