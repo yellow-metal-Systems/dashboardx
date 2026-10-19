@@ -48,18 +48,13 @@ describe("timeline and metrics", () => {
 });
 
 describe("roles", () => {
-  it("gives customer support leads only", () => {
-    expect(permissionsOf("customer_support")).toEqual(["leads.view", "leads.update"]);
-    expect(can("customer_support", "rewards.view")).toBe(false);
-    expect(can("customer_support", "partners.view")).toBe(false);
+  it("gives customer support read-only leads", () => {
+    expect(permissionsOf("customer_support")).toEqual(["leads.view"]);
+    expect(can("customer_support", "leads.update")).toBe(false);
   });
 
-  it("gives financial operators rewards and LMS review, but not partners, rules or the team", () => {
-    expect(can("financial_operator", "rewards.manage")).toBe(true);
-    expect(can("financial_operator", "lms.resolve")).toBe(true);
-    expect(can("financial_operator", "partners.manage")).toBe(false);
-    expect(can("financial_operator", "rewardRules.manage")).toBe(false);
-    expect(can("financial_operator", "team.manage")).toBe(false);
+  it("gives financial operators leads and status changes, nothing else", () => {
+    expect(permissionsOf("financial_operator")).toEqual(["leads.view", "leads.update"]);
   });
 
   it("gives admins everything, and reads the old 'staff' role as customer support", () => {

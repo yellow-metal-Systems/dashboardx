@@ -1,39 +1,32 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertTriangle, ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 
 import { LeadStatusSelect } from "@/components/leads/lead-status-select";
 import { MaxEligibleLoan, MaxEligibleLoanSkeleton } from "@/components/leads/max-eligible-loan";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { cn } from "@/lib/utils";
 import {
   ACCEPTANCE_LABELS,
-  BRANCH_MANAGER_BADGE_CLASSES,
-  BRANCH_MANAGER_LABELS,
   SOURCE_LABELS,
+  customerTag,
   formatDate,
   formatDateTime,
   formatInr,
-  hasProvisionalOffer,
   offerPlanLabel,
-  provisionalOfferNote,
   leadRef,
   statusLabel,
   actorLabel,
 } from "@/lib/leads";
 import { getLeadDetail } from "@/lib/leads-repo";
+import { staffAccess } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="text-label-sm uppercase tracking-widest text-label">
-      {children}
-    </h2>
-  );
+  return <h2 className="text-label-sm uppercase tracking-widest text-label">{children}</h2>;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -45,21 +38,32 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-const timeFormatter = new Intl.DateTimeFormat("en-IN", {
+/** "Bullet · 68% LTV · 22.2% p.a.", leaving out whatever is missing. */
+function planLine(plan: string | null, roi: number | null): string | null {
+  const parts = [plan ? offerPlanLabel(plan) : null, roi !== null ? `${roi}% p.a.` : null].filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
+}
+
+// "15 Oct, 4:27 pm", like the partner app's timeline.
+const activityTime = new Intl.DateTimeFormat("en-IN", {
+  day: "numeric",
+  month: "short",
   hour: "numeric",
   minute: "2-digit",
 });
 
 export default async function LeadPage({ params }: { params: { id: string } }) {
-  const detail = await getLeadDetail(params.id);
+  const [detail, access] = await Promise.all([getLeadDetail(params.id), staffAccess()]);
   if (!detail) notFound();
-  const { lead, activities, duplicates, webhookEvents, actorNames } = detail;
+  const { lead, activities, webhookEvents, actorNames } = detail;
 
-  const ref = leadRef(lead);
   const isAarthik = lead.source === "AARTHIKLABS";
   const submitter = lead.partner?.orgName ?? SOURCE_LABELS[lead.source];
-  const firstDuplicate = duplicates[0];
   const kfsIsUrl = lead.kfsReference?.startsWith("http") ?? false;
+  const requestedAmount = lead.loanAmount ?? lead.offerAmount;
+  const requestedPlan = planLine(lead.offerProductType, lead.offerRoiPercentPa);
+  const actualPlan = planLine(lead.disbursedPlan, lead.disbursedRoiPercentPa);
+  const failedUpdates = webhookEvents.filter((e) => e.deliveryStatus === "failed");
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
@@ -77,356 +81,185 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
             Leads
           </Link>
           <span className="mx-1.5">/</span>
-          <span className="font-medium text-on-surface">{ref}</span>
+          <span className="font-medium text-on-surface">{leadRef(lead)}</span>
         </nav>
       </div>
 
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div>
-          <h1 className="text-heading-lg text-on-surface">{lead.name}</h1>
-          <p className="mt-1 text-sm text-on-surface-variant">
-            Submitted {formatDateTime(lead.createdAt)} by {submitter}
-          </p>
-        </div>
-        {lead.duplicateFlag && (
-          <Badge className="gap-1.5 self-start border-transparent bg-secondary-container px-3 py-1 text-on-secondary-container hover:bg-secondary-container">
-            <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
-            {firstDuplicate
-              ? `Duplicate — matches lead ${leadRef(firstDuplicate)}`
-              : "Flagged as duplicate"}
-          </Badge>
-        )}
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="flex flex-col gap-6">
-          <Card>
-            <CardContent className="flex flex-col gap-4 pt-6 md:pt-9">
-              <SectionTitle>Borrower details</SectionTitle>
-              <dl className="grid gap-4 sm:grid-cols-2">
-                <Field label="Full name">{lead.name}</Field>
-                <Field label="Mobile number">{lead.mobile}</Field>
-                <Field label="Address">{lead.address}</Field>
-                <Field label="Pincode">{lead.pinCode}</Field>
-                <Field label="Branch">
-                  {lead.branch ? `${lead.branch.name}${lead.branch.state ? `, ${lead.branch.state}` : ""}` : "To be assigned"}
-                </Field>
-                {lead.gstin && (
-                  <Field label="GSTIN">
-                    <span className="font-mono text-xs">{lead.gstin}</span>
-                  </Field>
-                )}
-                {lead.dob && <Field label="Date of birth">{formatDate(lead.dob)}</Field>}
-              </dl>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="flex flex-col gap-4 pt-6 md:pt-9">
-              <SectionTitle>{isAarthik ? "Loan offer" : "Loan request"}</SectionTitle>
-              <dl className="grid gap-4 sm:grid-cols-2">
-                {lead.loanAmount !== null && (
-                  <Field label="Required amount">
-                    <span className="text-lg font-semibold">{formatInr(lead.loanAmount)}</span>
-                  </Field>
-                )}
-                {!isAarthik && <Field label="Submitting partner">{submitter}</Field>}
-                {isAarthik && lead.offerAmount !== null && (
-                  <Field label="Offer amount">
-                    <span className="text-lg font-semibold">{formatInr(lead.offerAmount)}</span>
-                  </Field>
-                )}
-                {isAarthik && lead.goldGrams !== null && (
-                  <Field label="Gold">{lead.goldGrams} g</Field>
-                )}
-                {isAarthik && lead.ltvPercent !== null && (
-                  <Field label="LTV">{lead.ltvPercent}%</Field>
-                )}
-                {isAarthik && (
-                  <Field label="Offer acceptance">
-                    {ACCEPTANCE_LABELS[lead.acceptanceState]}
-                  </Field>
-                )}
-                {lead.disbursementAmount !== null && (
-                  <Field label="Disbursed">
-                    <span className="text-lg font-semibold">
-                      {formatInr(lead.disbursementAmount)}
-                    </span>
-                  </Field>
-                )}
-                {lead.disbursementDate && (
-                  <Field label="Disbursed on">{formatDate(lead.disbursementDate)}</Field>
-                )}
-                {lead.loanId && (
-                  <Field label="Loan ID">
-                    <span className="font-mono text-xs">{lead.loanId}</span>
-                  </Field>
-                )}
-                {lead.kfsReference && (
-                  <Field label="Key Fact Statement">
-                    {kfsIsUrl ? (
-                      <a
-                        href={lead.kfsReference}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline"
-                      >
-                        Open KFS <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                    ) : (
-                      <span className="font-mono text-xs">{lead.kfsReference}</span>
-                    )}
-                  </Field>
-                )}
-              </dl>
-
-              {hasProvisionalOffer(lead) && (
-                <div className="flex flex-col gap-3 border-t border-outline-variant pt-4">
-                  <p className="text-sm text-on-surface-variant">
-                    {provisionalOfferNote(lead.source)}
-                  </p>
-                  <dl className="grid gap-4 sm:grid-cols-2">
-                    {lead.offerProductType && (
-                      <Field label="Plan">{offerPlanLabel(lead.offerProductType)}</Field>
-                    )}
-                    {lead.offerRoiPercentPa !== null && (
-                      <Field label="Interest">{lead.offerRoiPercentPa}% p.a.</Field>
-                    )}
-                    {lead.offerProcessingFee !== null && (
-                      <Field label="Processing fee">{formatInr(lead.offerProcessingFee)}</Field>
-                    )}
-                    {lead.offerTenureDays !== null && (
-                      <Field label="Tenure">{lead.offerTenureDays} days</Field>
-                    )}
-                  </dl>
-                </div>
-              )}
-
-              {lead.goldGrams !== null && (
-                <Suspense fallback={<MaxEligibleLoanSkeleton />}>
-                  <MaxEligibleLoan leadId={lead.id} goldGrams={lead.goldGrams} />
-                </Suspense>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="flex flex-col gap-4 pt-6 md:pt-9">
-              <SectionTitle>Activity</SectionTitle>
-              {activities.length === 0 ? (
-                <p className="text-sm text-on-surface-variant">No activity recorded.</p>
-              ) : (
-                <ol className="flex flex-col gap-3">
-                  {activities.map((a) => (
-                    <li key={a.id} className="grid grid-cols-[7rem_1fr] gap-3 text-sm">
-                      <time
-                        dateTime={a.createdAt}
-                        title={formatDateTime(a.createdAt)}
-                        className="text-on-surface-variant"
-                      >
-                        {formatDate(a.createdAt)},{" "}
-                        {timeFormatter.format(new Date(a.createdAt))}
-                      </time>
-                      <span className="text-on-surface">
-                        {a.message}
-                        {a.actor && !a.message.includes(actorLabel(a.actor, actorNames)) && (
-                          // Skipped when the message already names them ("…by Asha Rao").
-                          <span className="text-on-surface-variant"> by {actorLabel(a.actor, actorNames)}</span>
-                        )}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="flex flex-col gap-6">
-          <Card>
-            <CardContent className="flex flex-col gap-3 pt-6 md:pt-9">
-              <SectionTitle>Status</SectionTitle>
+      <Card className="max-w-4xl">
+        <CardContent className="flex flex-col gap-8 pt-6 md:pt-9">
+          {/* Header: name + tag, who sent it, and the status control. */}
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <h1 className="flex flex-wrap items-center gap-2 text-heading-lg text-on-surface">
+                {lead.name}
+                <Badge variant={lead.isNewCustomer ? "success" : "grey"} data-customer-tag>
+                  {customerTag(lead)}
+                </Badge>
+              </h1>
+              <p className="mt-1 text-sm text-on-surface-variant">
+                Submitted {formatDateTime(lead.createdAt)} by {submitter}
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 md:w-56">
               <LeadStatusSelect
                 leadId={lead.id}
                 leadName={lead.name}
                 status={lead.status}
                 isAarthik={isAarthik}
+                canUpdate={access.permissions.includes("leads.update")}
                 className="w-full"
               />
               {lead.lmsUpdatedAt && (
                 <div className="flex items-center gap-2 text-xs text-on-surface-variant" data-lms-tag>
-                  <Badge variant="grey">LMS</Badge> Updated by the Loan Managers App on {formatDateTime(lead.lmsUpdatedAt)}
+                  <Badge variant="grey">LMS</Badge> Updated by the Loan Managers App on{" "}
+                  {formatDateTime(lead.lmsUpdatedAt)}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          {lead.duplicateFlag && (
-            <Card>
-              <CardContent className="flex flex-col gap-3 pt-6 md:pt-9">
-                <SectionTitle>Duplicate check</SectionTitle>
-                {firstDuplicate ? (
+          <section className="flex flex-col gap-4">
+            <SectionTitle>Borrower</SectionTitle>
+            <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <Field label="Mobile number">{lead.mobile}</Field>
+              <Field label="Pincode">{lead.pinCode}</Field>
+              <Field label="Branch">
+                {lead.branch
+                  ? `${lead.branch.name}${lead.branch.state ? `, ${lead.branch.state}` : ""}`
+                  : "To be assigned"}
+              </Field>
+              {lead.address && <Field label="Address">{lead.address}</Field>}
+              {lead.gstin && (
+                <Field label="GSTIN">
+                  <span className="font-mono text-xs">{lead.gstin}</span>
+                </Field>
+              )}
+              {lead.dob && <Field label="Date of birth">{formatDate(lead.dob)}</Field>}
+              <Field label="Source">
+                {lead.partner ? (
+                  <Link href={`/dashboard/partners/${lead.partner.id}`} className="underline-offset-4 hover:underline">
+                    {lead.partner.orgName}
+                  </Link>
+                ) : (
+                  SOURCE_LABELS[lead.source]
+                )}
+              </Field>
+              {lead.externalRef && <Field label="Their reference">{lead.externalRef}</Field>}
+              {lead.agentRef && <Field label="Their agent">{lead.agentRef}</Field>}
+              {lead.lspName && <Field label="LSP">{lead.lspName}</Field>}
+              {lead.ondcTransactionId && (
+                <Field label="ONDC transaction">
+                  <span className="select-all break-all font-mono text-xs">{lead.ondcTransactionId}</span>
+                </Field>
+              )}
+            </dl>
+          </section>
+
+          <section className="flex flex-col gap-4">
+            <SectionTitle>Requested vs actual</SectionTitle>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="flex flex-col gap-3 rounded-lg bg-surface-container-low p-4" data-requested>
+                <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Requested</p>
+                <p className="text-heading-lg text-on-surface">
+                  {lead.loanAmountEstimated && lead.goldGrams !== null && requestedAmount !== null
+                    ? `${lead.goldGrams} g gold, estimated ${formatInr(requestedAmount)}`
+                    : requestedAmount !== null
+                      ? formatInr(requestedAmount)
+                      : "—"}
+                </p>
+                {requestedPlan && <p className="text-sm text-on-surface">{requestedPlan}</p>}
+                {isAarthik && (
+                  <p className="text-xs text-on-surface-variant">
+                    Offer: {ACCEPTANCE_LABELS[lead.acceptanceState]}
+                    {lead.offerTenureDays !== null && ` · ${lead.offerTenureDays} days`}
+                    {lead.offerProcessingFee !== null && ` · fee ${formatInr(lead.offerProcessingFee)}`}
+                  </p>
+                )}
+                {lead.kfsReference &&
+                  (kfsIsUrl ? (
+                    <a
+                      href={lead.kfsReference}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-sm text-primary underline-offset-4 hover:underline"
+                    >
+                      Open KFS <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  ) : (
+                    <p className="font-mono text-xs text-on-surface-variant">KFS {lead.kfsReference}</p>
+                  ))}
+              </div>
+
+              <div className="flex flex-col gap-3 rounded-lg bg-surface-container-low p-4" data-actual>
+                <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Actual</p>
+                {lead.disbursementAmount !== null ? (
                   <>
-                    <p className="text-sm text-on-surface-variant">
-                      This mobile number matches an earlier lead submitted by{" "}
-                      <span className="font-medium text-on-surface">
-                        {firstDuplicate.partner?.orgName ??
-                          SOURCE_LABELS[firstDuplicate.source]}
-                      </span>{" "}
-                      on {formatDate(firstDuplicate.createdAt)}.
+                    <p className="text-heading-lg text-on-surface">{formatInr(lead.disbursementAmount)}</p>
+                    {actualPlan && <p className="text-sm text-on-surface">{actualPlan}</p>}
+                    <p className="text-xs text-on-surface-variant">
+                      {lead.disbursementDate && `Disbursed ${formatDate(lead.disbursementDate)}`}
+                      {lead.loanId && ` · loan ${lead.loanId}`}
                     </p>
-                    <ul className="flex flex-col gap-1">
-                      {duplicates.map((d) => (
-                        <li key={d.id}>
-                          <Link
-                            href={`/dashboard/leads/${d.id}`}
-                            className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-                          >
-                            View matching lead {leadRef(d)} →
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
                   </>
                 ) : (
-                  <p className="text-sm text-on-surface-variant">
-                    Flagged as duplicate, but no other lead with this mobile number
-                    is in the system.
-                  </p>
+                  <p className="text-sm text-on-surface-variant">Not disbursed yet.</p>
                 )}
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            </div>
 
-          {lead.partner ? (
-            <Card>
-              <CardContent className="flex flex-col gap-2 pt-6 md:pt-9">
-                <SectionTitle>Partner</SectionTitle>
-                <p className="text-sm font-medium text-on-surface">{lead.partner.orgName}</p>
-                <a
-                  href={`mailto:${lead.partner.contactEmail}`}
-                  className="text-xs text-on-surface-variant hover:underline"
-                >
-                  {lead.partner.contactEmail}
-                </a>
-                {lead.externalRef && (
-                  <p className="text-sm text-on-surface">
-                    <span className="text-on-surface-variant">Their reference: </span>
-                    {lead.externalRef}
-                  </p>
-                )}
-                {lead.agentRef && (
-                  <p className="text-sm text-on-surface">
-                    <span className="text-on-surface-variant">Their agent: </span>
-                    {lead.agentRef}
-                  </p>
-                )}
-                <Link
-                  href={`/dashboard/partners/${lead.partner.id}`}
-                  className="mt-1 text-sm font-medium text-primary underline-offset-4 hover:underline"
-                >
-                  View partner →
-                </Link>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardContent className="flex flex-col gap-2 pt-6 md:pt-9">
-                <SectionTitle>Source</SectionTitle>
-                <p className="text-sm font-medium text-on-surface">
-                  {SOURCE_LABELS[lead.source]}
-                </p>
-                <p className="text-xs text-on-surface-variant">
-                  Pushed by AarthikLabs on behalf of an ONDC buyer app; no partner
-                  organization is involved.
-                </p>
-                {lead.lspName && (
-                  <p className="text-sm text-on-surface">
-                    <span className="text-on-surface-variant">LSP: </span>
-                    {lead.lspName}
-                  </p>
-                )}
-                {lead.ondcTransactionId && (
-                  <p className="break-all text-sm text-on-surface">
-                    <span className="text-on-surface-variant">ONDC transaction: </span>
-                    <span className="select-all font-mono text-xs">{lead.ondcTransactionId}</span>
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          )}
+            {lead.goldGrams !== null && (
+              <Suspense fallback={<MaxEligibleLoanSkeleton />}>
+                <MaxEligibleLoan leadId={lead.id} goldGrams={lead.goldGrams} />
+              </Suspense>
+            )}
+          </section>
 
-          {webhookEvents.length > 0 && (
-            <Card>
-              <CardContent className="flex flex-col gap-3 pt-6 md:pt-9">
-                <SectionTitle>AarthikLabs updates</SectionTitle>
-                <ul className="flex flex-col gap-3">
-                  {webhookEvents.map((event) => {
-                    const failed = event.deliveryStatus === "failed";
-                    const delivered = event.deliveryStatus === "delivered";
-                    return (
-                      <li key={event.id} className="flex flex-col gap-0.5">
-                        <div className="flex items-baseline justify-between gap-2">
-                          <span className="text-sm font-semibold text-on-surface">
-                            {statusLabel(event.statusSent)}
-                          </span>
-                          <Badge
-                            className={cn(
-                              "border-transparent text-[10px] uppercase tracking-wider",
-                              delivered
-                                ? "bg-success-solid font-bold text-white hover:bg-success-solid"
-                                : failed
-                                  ? "bg-error-solid font-bold text-white hover:bg-error-solid"
-                                  : "bg-secondary-container font-extrabold text-on-secondary-container hover:bg-secondary-container"
-                            )}
-                          >
-                            {delivered ? "Delivered" : failed ? "Failed" : "Sending"}
-                          </Badge>
-                        </div>
-                        <span className="text-xs text-on-surface-variant">
-                          {formatDateTime(event.createdAt)}
-                          {event.attempts > 1 && ` · ${event.attempts} attempts`}
-                        </span>
-                        {failed && event.errorMessage && (
-                          <span className="text-xs text-error">
-                            {event.errorMessage} — needs manual follow-up
-                          </span>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
+          <section className="flex flex-col gap-4">
+            <SectionTitle>Activity</SectionTitle>
+            {activities.length === 0 ? (
+              <p className="text-sm text-on-surface-variant">No activity recorded.</p>
+            ) : (
+              <ol className="flex flex-col gap-2 border-l-2 border-outline-variant pl-4">
+                {activities.map((a) => {
+                  const by = a.actor ? actorLabel(a.actor, actorNames) : null;
+                  // shortcut: matches serverx's "Status changed X → Disbursed" text; if that wording
+                  // changes the line just falls back to the stored message. Upgrade if serverx adds a typed event.
+                  const message =
+                    a.message.endsWith("→ Disbursed") && lead.disbursementAmount !== null
+                      ? `Disbursed ${formatInr(lead.disbursementAmount)}`
+                      : a.message;
+                  return (
+                    <li key={a.id} className="relative text-sm text-on-surface">
+                      <span aria-hidden="true" className="absolute -left-[21px] top-1.5 size-2 rounded-full bg-outline" />
+                      <time dateTime={a.createdAt} className="text-on-surface-variant">
+                        {activityTime.format(new Date(a.createdAt))}
+                      </time>
+                      {" · "}
+                      {message}
+                      {/* Skipped when the message already names them ("…by Asha Rao"). */}
+                      {by && !message.includes(by) && <span className="text-on-surface-variant"> by {by}</span>}
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </section>
 
-          <Card>
-            <CardContent className="flex flex-col gap-3 pt-6 md:pt-9">
-              <SectionTitle>Branch manager</SectionTitle>
-              <Badge
-                className={cn(
-                  "self-start border-transparent",
-                  BRANCH_MANAGER_BADGE_CLASSES[lead.branchManagerStatus]
-                )}
-              >
-                {BRANCH_MANAGER_LABELS[lead.branchManagerStatus]}
-              </Badge>
-              {lead.branchManagerStatus === "CONFIRMED" && (
-                <dl className="grid gap-3">
-                  {lead.loanConfirmedAmount !== null && (
-                    <Field label="Confirmed amount">
-                      {formatInr(lead.loanConfirmedAmount)}
-                    </Field>
-                  )}
-                  {lead.loanConfirmedAt && (
-                    <Field label="Confirmed on">{formatDateTime(lead.loanConfirmedAt)}</Field>
-                  )}
-                </dl>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+          {failedUpdates.length > 0 && (
+            <section className="flex flex-col gap-2 rounded-lg bg-error-container p-4 text-on-error-container">
+              <SectionTitle>AarthikLabs updates that failed</SectionTitle>
+              <ul className="flex flex-col gap-1 text-sm">
+                {failedUpdates.map((e) => (
+                  <li key={e.id}>
+                    {statusLabel(e.statusSent)} · {formatDateTime(e.createdAt)}
+                    {e.errorMessage && ` · ${e.errorMessage}`} — needs manual follow-up
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

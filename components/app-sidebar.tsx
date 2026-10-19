@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, Inbox, LayoutDashboard, LogOut, Settings, Wallet } from "lucide-react";
+import { Building2, ChevronUp, ClipboardCheck, Inbox, LayoutDashboard, LogOut, Settings, UserCog, Users, Wallet } from "lucide-react";
 
 import { signOut } from "@/lib/auth/actions";
+import { ROLE_LABELS, type Permission, type StaffRole } from "@/lib/auth/roles";
 import {
   Sidebar,
   SidebarContent,
@@ -17,24 +18,38 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
-const NAV_ITEMS = [
-  { title: "Leads", href: "/dashboard", icon: Inbox, prefixes: ["/dashboard/leads"] },
-  { title: "Partners", href: "/dashboard/partners", icon: Building2, prefixes: ["/dashboard/partners/"] },
-  { title: "Rewards", href: "/dashboard/rewards", icon: Wallet, prefixes: [] },
-  { title: "Overview", href: "/dashboard/overview", icon: LayoutDashboard, prefixes: [] },
+// Each item shows only for roles holding its permission; the page itself 404s regardless.
+const NAV_ITEMS: { title: string; href: string; icon: typeof Inbox; permission: Permission; prefixes: string[] }[] = [
+  { title: "Leads", href: "/dashboard", icon: Inbox, permission: "leads.view", prefixes: ["/dashboard/leads"] },
+  { title: "LMS review", href: "/dashboard/leads/lms-review", icon: ClipboardCheck, permission: "lms.resolve", prefixes: [] },
+  { title: "Partners", href: "/dashboard/partners", icon: Building2, permission: "partners.view", prefixes: ["/dashboard/partners/"] },
+  { title: "Rewards", href: "/dashboard/rewards", icon: Wallet, permission: "rewards.view", prefixes: ["/dashboard/rewards/"] },
+  { title: "Team", href: "/dashboard/team", icon: Users, permission: "team.manage", prefixes: [] },
+  // Overview lists top partners, so it follows partners.view (admins), like Partners.
+  { title: "Overview", href: "/dashboard/overview", icon: LayoutDashboard, permission: "partners.view", prefixes: [] },
 ];
 
 type Props = {
   staffName: string;
   staffEmail: string;
+  role: StaffRole;
+  permissions: Permission[];
 };
 
-export function AppSidebar({ staffName, staffEmail }: Props) {
+export function AppSidebar({ staffName, staffEmail, role, permissions }: Props) {
   const pathname = usePathname();
+  const items = NAV_ITEMS.filter((item) => permissions.includes(item.permission));
 
-  function isActive(item: (typeof NAV_ITEMS)[number]) {
-    return pathname === item.href || item.prefixes.some((p) => pathname.startsWith(p));
-  }
+  // Longest match wins, so /dashboard/leads/lms-review lights "LMS review", not "Leads".
+  const matchLength = (item: (typeof NAV_ITEMS)[number]) =>
+    Math.max(
+      pathname === item.href ? item.href.length : 0,
+      ...item.prefixes.map((p) => (pathname.startsWith(p) ? p.length : 0)),
+    );
+  const activeHref = items.reduce<{ href: string; len: number }>(
+    (best, item) => (matchLength(item) > best.len ? { href: item.href, len: matchLength(item) } : best),
+    { href: "", len: 0 },
+  ).href;
 
   return (
     <Sidebar>
@@ -53,9 +68,9 @@ export function AppSidebar({ staffName, staffEmail }: Props) {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAV_ITEMS.map((item) => (
+              {items.map((item) => (
                 <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={isActive(item)}>
+                  <SidebarMenuButton asChild isActive={item.href === activeHref}>
                     <Link href={item.href}>
                       <item.icon />
                       <span>{item.title}</span>
@@ -87,14 +102,41 @@ export function AppSidebar({ staffName, staffEmail }: Props) {
         working portal.
       */}
       <SidebarFooter>
-        <div className="px-2 py-1.5">
-          <p className="truncate text-xs font-semibold text-sidebar-foreground" title={staffName}>
-            {staffName}
-          </p>
-          <p className="truncate text-[11px] text-sidebar-muted" title={staffEmail}>
-            {staffEmail}
-          </p>
-        </div>
+        {/* Profile menu (standup 2026-10-15): click the name to see the account and, for admins, Manage team. */}
+        <details className="group rounded-md">
+          <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md px-2 py-1.5 hover:bg-sidebar-accent [&::-webkit-details-marker]:hidden">
+            <span
+              aria-hidden="true"
+              className="flex size-7 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground"
+            >
+              {staffName.trim().charAt(0).toUpperCase() || "?"}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-xs font-semibold text-sidebar-foreground" title={staffName}>
+                {staffName}
+              </span>
+              <span className="block truncate text-[11px] text-sidebar-muted">{ROLE_LABELS[role]}</span>
+            </span>
+            <ChevronUp aria-hidden="true" className="size-4 shrink-0 text-sidebar-muted transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="flex flex-col gap-1 px-2 pb-1.5 pt-1">
+            <p className="truncate text-[11px] text-sidebar-muted" title={staffEmail}>
+              {staffEmail}
+            </p>
+            {permissions.includes("team.manage") && (
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/team")}>
+                    <Link href="/dashboard/team">
+                      <UserCog />
+                      <span>Manage team</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            )}
+          </div>
+        </details>
         <SidebarMenu>
           <SidebarMenuItem>
             <form action={signOut}>

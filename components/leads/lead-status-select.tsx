@@ -26,10 +26,12 @@ type Props = {
   leadName: string;
   status: string;
   isAarthik: boolean;
+  /** False for read-only roles (customer support): the status shows but can't be changed. */
+  canUpdate: boolean;
   className?: string;
 };
 
-export function LeadStatusSelect({ leadId, leadName, status, isAarthik, className }: Props) {
+export function LeadStatusSelect({ leadId, leadName, status, isAarthik, canUpdate, className }: Props) {
   const [value, setValue] = useState<string>(status);
   const [error, setError] = useState<string | null>(null);
   const [askingDisbursement, setAskingDisbursement] = useState(false);
@@ -75,7 +77,7 @@ export function LeadStatusSelect({ leadId, leadName, status, isAarthik, classNam
 
   return (
     <div className="flex flex-col gap-2">
-      <Select value={value} onValueChange={change} disabled={isPending || locked}>
+      <Select value={value} onValueChange={change} disabled={!canUpdate || isPending || locked}>
         <SelectTrigger
           aria-label={`Status for ${leadName}`}
           // "!" because tailwind-merge does not know the custom shadow-* names, and a

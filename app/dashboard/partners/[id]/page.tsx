@@ -55,7 +55,8 @@ export default async function PartnerPage({ params }: { params: { id: string } }
           <TogglePartner partnerId={p.id} enabled={p.status !== "disabled"} />
         </span>
       </div>
-      <GstinRequiredToggle partnerId={p.id} required={p.gstinRequired} />
+      {/* Individuals can't require a GSTIN; the server refuses it for them. */}
+      {p.type === "ORGANISATION" && <GstinRequiredToggle partnerId={p.id} required={p.gstinRequired} />}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

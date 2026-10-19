@@ -13,12 +13,16 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Field, FieldContent, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export type DisbursementInput = {
   loanId?: string;
   amount?: number;
   date?: string;
   tenure?: number;
+  plan?: "BULLET" | "MONTHLY";
+  /** Left out, the server fills it in from the rate table. */
+  roiPercentPa?: number;
 };
 
 type Props = {
@@ -52,6 +56,8 @@ export function DisbursementDialog({ open, leadName, isAarthik, onCancel, onConf
   const [date, setDate] = useState(todayIso());
   const [loanId, setLoanId] = useState("");
   const [tenure, setTenure] = useState("12");
+  const [plan, setPlan] = useState<"BULLET" | "MONTHLY" | "">("");
+  const [rate, setRate] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   function submit(event: React.FormEvent) {
@@ -73,12 +79,24 @@ export function DisbursementDialog({ open, leadName, isAarthik, onCancel, onConf
       return;
     }
 
+    if (!plan) {
+      setError("Choose the plan the loan was given on.");
+      return;
+    }
+    const parsedRate = rate.trim() === "" ? undefined : Number(rate);
+    if (parsedRate !== undefined && (!Number.isFinite(parsedRate) || parsedRate <= 0 || parsedRate > 100)) {
+      setError("Rate must be a percentage per year, e.g. 18.96.");
+      return;
+    }
+
     setError(null);
     onConfirm({
       amount: parsedAmount,
       date,
       loanId: loanId.trim() === "" ? undefined : loanId.trim(),
       tenure: parsedTenure,
+      plan,
+      roiPercentPa: parsedRate,
     });
   }
 
@@ -108,6 +126,34 @@ export function DisbursementDialog({ open, leadName, isAarthik, onCancel, onConf
                   onChange={(e) => setAmount(e.target.value)}
                   autoFocus
                   required
+                />
+              </FieldContent>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="disbursed-plan">Plan</FieldLabel>
+              <FieldContent>
+                <Select value={plan} onValueChange={(v) => setPlan(v as "BULLET" | "MONTHLY")}>
+                  <SelectTrigger id="disbursed-plan">
+                    <SelectValue placeholder="Choose a plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="BULLET">Bullet</SelectItem>
+                    <SelectItem value="MONTHLY">Monthly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FieldContent>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="disbursed-rate">Rate, % per year (optional)</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="disbursed-rate"
+                  inputMode="decimal"
+                  placeholder="From the rate table"
+                  value={rate}
+                  onChange={(e) => setRate(e.target.value)}
                 />
               </FieldContent>
             </Field>

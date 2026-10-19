@@ -13,12 +13,16 @@ export default async function DashboardLayout({
   // Belt and braces with middleware.ts, so a routing-config mistake cannot expose
   // borrower PII. Reads the live role (one small query), so a member who has been
   // turned off is signed out here rather than at their cookie's expiry.
-  // staff.permissions is what the sidebar should use to hide what a role can't open.
   const staff = await staffAccess();
 
   return (
     <SidebarProvider>
-      <AppSidebar staffName={staff.name} staffEmail={staff.email} />
+      <AppSidebar
+        staffName={staff.name}
+        staffEmail={staff.email}
+        role={staff.role}
+        permissions={staff.permissions}
+      />
       <SidebarInset>
         {/* fetchIntegrationHealth was measured taking ~3s of every page's TTFB
             (its own 4s timeout ceiling) when awaited here directly. It's

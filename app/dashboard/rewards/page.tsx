@@ -46,10 +46,12 @@ export default async function RewardsPage({ searchParams }: { searchParams: { q?
   // "admin" here means may see amounts and act on rewards (rewards.manage).
   const access = await requirePermission("rewards.view");
   const admin = access.permissions.includes("rewards.manage");
+  // Narrower than "admin": financial operators see amounts but can't change the rules.
+  const editRules = access.permissions.includes("rewardRules.manage");
   const [{ rows, totals, awaiting }, rules, history] = await Promise.all([
     listRewardPartners(admin),
-    admin ? currentRewardRules() : Promise.resolve(null),
-    admin ? rewardRulesHistory() : Promise.resolve([]),
+    editRules ? currentRewardRules() : Promise.resolve(null),
+    editRules ? rewardRulesHistory() : Promise.resolve([]),
   ]);
   const q = (searchParams.q ?? "").trim();
   const shown = q ? rows.filter((r) => r.orgName.toLowerCase().includes(q.toLowerCase())) : rows;
@@ -69,20 +71,20 @@ export default async function RewardsPage({ searchParams }: { searchParams: { q?
       </div>
 
       {totals && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {[
-            ["To approve", totals.toApprove],
-            ["To pay", totals.owed],
-            ["Paid this financial year", totals.paidThisFy],
-          ].map(([label, value]) => (
-            <Card key={label as string}>
-              <CardContent className={cn("flex flex-col gap-1", PAD)}>
+        <Card>
+          <CardContent className={cn("flex flex-col divide-y divide-outline-variant", PAD)}>
+            {[
+              ["To approve", totals.toApprove],
+              ["To pay", totals.owed],
+              ["Paid this financial year", totals.paidThisFy],
+            ].map(([label, value]) => (
+              <div key={label as string} className="flex items-baseline justify-between gap-4 py-2 first:pt-0 last:pb-0">
                 <span className="text-sm text-on-surface-variant">{label}</span>
-                <span className="text-heading-lg tabular-nums text-on-surface">{formatInr(value as number)}</span>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                <span className="text-heading-sm tabular-nums text-on-surface">{formatInr(value as number)}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       )}
 
       {rules && (

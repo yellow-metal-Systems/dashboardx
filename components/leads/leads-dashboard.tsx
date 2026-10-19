@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { RefreshCw, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { RefreshCw } from "lucide-react";
 
 import { updateLeadStatus } from "@/app/dashboard/actions";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -25,7 +25,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { LeadFilters } from "@/components/leads/lead-filters";
-import { LeadDetailSheet } from "@/components/leads/lead-detail-sheet";
 import {
   DisbursementDialog,
   type DisbursementInput,
@@ -39,32 +38,39 @@ import {
   statusLabel,
   formatDateTime,
   formatInr,
-  submittedLabel,
   isNewLead,
   NEW_LEAD_MINUTES,
-  leadRef,
+  customerTag,
   type Lead,
   type LeadPartner,
   type LeadStatus,
 } from "@/lib/leads";
-import { formatAge, useLiveRefresh } from "@/hooks/use-live-refresh";
+import { useLiveRefresh } from "@/hooks/use-live-refresh";
 import {
   EMPTY_FILTERS,
+  TIME_RANGES,
+  TIME_RANGE_LABELS,
   applyLeadFilters,
+  applyTimeRange,
+  leadMetrics,
   type LeadFilters as Filters,
+  type TimeRange,
 } from "@/lib/lead-filters";
 
 type Props = {
   initialLeads: Lead[];
   partners: LeadPartner[];
+  branches: { id: string; name: string }[];
   /** LMS updates no lead could be matched to yet. */
   lmsToMatch?: number;
+  /** Customer support is read-only: the status shows but can't be changed. */
+  canUpdate: boolean;
 };
 
-export function LeadsDashboard({ initialLeads, partners, lmsToMatch = 0 }: Props) {
+export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 0, canUpdate }: Props) {
   const [leads, setLeads] = useState<Lead[]>(initialLeads);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [range, setRange] = useState<TimeRange>("all");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [disbursingId, setDisbursingId] = useState<string | null>(null);
@@ -76,18 +82,17 @@ export function LeadsDashboard({ initialLeads, partners, lmsToMatch = 0 }: Props
   const pendingRef = useRef<string | null>(null);
   pendingRef.current = pendingId;
 
-  function openLead(id: string | null) {
-    setSelectedId(id);
-  }
+  // Standup 2026-10-15: a lead opens as a full page, not a side panel.
+  const router = useRouter();
 
   // Leads also arrive from AarthikLabs posting to the partner API, and nothing
   // tells this browser about those. Poll while the tab is visible, and pause
   // while a status change is in flight.
-  const { lastRefreshedAt, isRefreshing, refreshNow } = useLiveRefresh({
+  const { isRefreshing, refreshNow } = useLiveRefresh({
     enabled: pendingId === null,
   });
 
-  // Drives the "updated 40s ago" label. Purely cosmetic, so a slow tick is fine.
+  // Drives the "N new in the last 45 min" count. Purely cosmetic, so a slow tick is fine.
   const [clock, setClock] = useState(() => new Date());
   useEffect(() => {
     const id = window.setInterval(() => setClock(new Date()), 10_000);
@@ -169,22 +174,15 @@ export function LeadsDashboard({ initialLeads, partners, lmsToMatch = 0 }: Props
     commitStatus(id, status);
   }
 
-  const stats = useMemo(
-    () => ({
-      total: leads.length,
-      new: leads.filter((l) => l.status === "LEAD_CREATED").length,
-      newCustomers: leads.filter((l) => l.isNewCustomer).length,
-      disbursed: leads.filter((l) => l.status === "DISBURSED").length,
-    }),
-    [leads]
-  );
+  // The timeline narrows both the cards and the table; the filters narrow the table further.
+  const rangedLeads = useMemo(() => applyTimeRange(leads, range, clock), [leads, range, clock]);
+  const stats = useMemo(() => leadMetrics(rangedLeads), [rangedLeads]);
 
   const filteredLeads = useMemo(
-    () => applyLeadFilters(leads, filters),
-    [leads, filters]
+    () => applyLeadFilters(rangedLeads, filters),
+    [rangedLeads, filters]
   );
 
-  const selectedLead = leads.find((l) => l.id === selectedId) ?? null;
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
@@ -202,8 +200,6 @@ export function LeadsDashboard({ initialLeads, partners, lmsToMatch = 0 }: Props
             <span>
               {leads.length} total · {filteredLeads.length} shown
             </span>
-            <span aria-hidden="true">·</span>
-            <span>updated {formatAge(lastRefreshedAt, clock)}</span>
             <button
               type="button"
               onClick={refreshNow}
@@ -231,45 +227,50 @@ export function LeadsDashboard({ initialLeads, partners, lmsToMatch = 0 }: Props
             </span>
           </div>
         </div>
-        <div className="relative md:w-72">
-          <Search
-            aria-hidden="true"
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant"
-          />
-          <Input
-            type="search"
-            aria-label="Search leads by name, mobile or ID"
-            placeholder="Search leads"
-            value={filters.search}
-            onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-            className="pl-9"
-          />
-        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          ["Total leads", stats.total],
-          ["New", stats.new],
-          ["New customers", stats.newCustomers],
-          ["Disbursed", stats.disbursed],
-        ].map(([label, value]) => (
-          <Card key={label}>
-            <CardHeader className="p-4 pb-2 md:p-6 md:pb-2">
-              <CardTitle className="min-h-10 text-sm font-medium text-on-surface-variant">
-                {label}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
-              <p className="text-heading-xl text-on-surface">{value}</p>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="flex flex-col gap-3">
+        <div
+          role="radiogroup"
+          aria-label="Time range"
+          className="flex w-fit flex-wrap gap-1 rounded-full bg-surface-container-low p-1"
+        >
+          {TIME_RANGES.map((r) => (
+            <button
+              key={r}
+              type="button"
+              role="radio"
+              aria-checked={range === r}
+              onClick={() => setRange(r)}
+              className={cn(
+                "h-8 rounded-full px-3 text-sm font-bold",
+                range === r ? "bg-raised shadow-e1" : "text-on-surface-variant"
+              )}
+            >
+              {TIME_RANGE_LABELS[r]}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-3 gap-3 md:max-w-xl">
+          {[
+            ["Total leads", stats.total],
+            ["New", stats.newCustomers],
+            ["Disbursed", stats.disbursed],
+          ].map(([label, value]) => (
+            <Card key={label}>
+              <CardContent className="p-3 md:p-4">
+                <p className="text-xs font-medium text-on-surface-variant">{label}</p>
+                <p className="mt-1 text-heading-lg tabular-nums text-on-surface">{value}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
 
       <Card>
         <CardContent className="flex flex-col gap-4 pt-6 md:pt-9">
-          <LeadFilters filters={filters} onChange={setFilters} partners={partners} />
+          <LeadFilters filters={filters} onChange={setFilters} partners={partners} branches={branches} />
 
           <p role="status" aria-live="polite" className="sr-only">
             {filteredLeads.length} of {leads.length} leads
@@ -295,14 +296,12 @@ export function LeadsDashboard({ initialLeads, partners, lmsToMatch = 0 }: Props
             <Table>
               <TableHeader>
                 <TableRow className="[&>th]:whitespace-nowrap">
-                  <TableHead>Lead ID</TableHead>
                   <TableHead>Consumer</TableHead>
                   <TableHead>Mobile</TableHead>
                   <TableHead>Pincode</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead>Partner</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>New customer</TableHead>
                   <TableHead>Submitted</TableHead>
                 </TableRow>
               </TableHeader>
@@ -312,29 +311,24 @@ export function LeadsDashboard({ initialLeads, partners, lmsToMatch = 0 }: Props
                   return (
                     <TableRow
                       key={lead.id}
-                      onClick={() => openLead(lead.id)}
-                      data-state={lead.id === selectedId ? "selected" : undefined}
+                      onClick={() => router.push(`/dashboard/leads/${lead.id}`)}
                       className="cursor-pointer"
                     >
-                      <TableCell className="font-mono text-xs text-on-surface-variant">
-                        {leadRef(lead)}
-                      </TableCell>
                       <TableCell className="whitespace-nowrap font-medium text-on-surface">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openLead(lead.id);
-                          }}
-                          className="text-left underline-offset-4 hover:underline focus-visible:outline-none focus-visible:underline"
+                        <Link
+                          href={`/dashboard/leads/${lead.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="underline-offset-4 hover:underline focus-visible:outline-none focus-visible:underline"
                         >
                           {lead.name}
-                        </button>
-                        {isNewLead(lead.createdAt, clock) && (
-                          <Badge variant="success" dot className="ml-2 align-middle" data-new-lead>
-                            New
-                          </Badge>
-                        )}
+                        </Link>
+                        <Badge
+                          variant={lead.isNewCustomer ? "success" : "grey"}
+                          className="ml-2 align-middle"
+                          data-customer-tag
+                        >
+                          {customerTag(lead)}
+                        </Badge>
                       </TableCell>
                       <TableCell>{lead.mobile}</TableCell>
                       <TableCell>{lead.pinCode}</TableCell>
@@ -357,6 +351,7 @@ export function LeadsDashboard({ initialLeads, partners, lmsToMatch = 0 }: Props
                           value={lead.status}
                           onValueChange={(value) => updateStatus(lead.id, value)}
                           disabled={
+                            !canUpdate ||
                             pendingId === lead.id ||
                             (parseLeadStatus(lead.status) !== null &&
                               isTerminalStatus(parseLeadStatus(lead.status)!))
@@ -389,13 +384,8 @@ export function LeadsDashboard({ initialLeads, partners, lmsToMatch = 0 }: Props
                           </SelectContent>
                         </Select>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant={lead.isNewCustomer ? "success" : "grey"}>
-                          {lead.isNewCustomer ? "Yes" : "No"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap" title={formatDateTime(lead.createdAt)}>
-                        {submittedLabel(lead.createdAt, clock)}
+                      <TableCell className="whitespace-nowrap tabular-nums">
+                        {formatDateTime(lead.createdAt)}
                       </TableCell>
                     </TableRow>
                   );
@@ -406,17 +396,9 @@ export function LeadsDashboard({ initialLeads, partners, lmsToMatch = 0 }: Props
         </CardContent>
       </Card>
 
-      <LeadDetailSheet
-        lead={selectedLead}
-        allLeads={leads}
-        onOpenChange={(open) => {
-          if (!open) openLead(null);
-        }}
-        onStatusChange={updateStatus}
-        onSelectLead={openLead}
-      />
-
       <DisbursementDialog
+        // A fresh form per lead, so one lead's figures never carry over to the next.
+        key={disbursingId ?? ""}
         open={disbursingId !== null}
         leadName={leads.find((l) => l.id === disbursingId)?.name ?? "this lead"}
         isAarthik={leads.find((l) => l.id === disbursingId)?.source === "AARTHIKLABS"}
