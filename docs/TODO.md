@@ -35,26 +35,20 @@ Nothing below is broken. These are gaps and unmade decisions.
 - **Only the leads list live-refreshes.** `hooks/use-live-refresh.ts` polls every 30s
   and on tab refocus. The lead detail and overview pages update on navigation only. The
   hook is reusable if that matters.
-- **Partners page is read-only.** No invite, no disable, no edit — the v1 spec asks for
-  all three.
+- **Partners can't be edited.** The Partners page adds a partner with an invite link,
+  turns one off, reviews sign-ups and issues API keys, but a partner's name or contact
+  details can't be changed after they are added.
 
 ## Not built, and the v1 spec requires it
 
-The entire partner-facing side. There is no partner route at all — the earlier
-`/partner` mock was deleted rather than left implying a working portal. Note that
-`middleware.ts` only guards `/dashboard/*`, so a new top-level route is
-unauthenticated until added to the matcher.
+Partners sign up, accept invites and submit leads in LeadBridge, a separate app; this
+repo has no partner-facing route. Note that `middleware.ts` only guards `/dashboard/*`,
+so a new top-level route here is unauthenticated until added to the matcher.
 
-Missing, per the v1 platform spec §6.1 / §11:
+Still missing, per the v1 platform spec §6.1 / §11:
 
-- `PartnerUser` and `Invite` models
-- Invitation tokens (single-use, expiring), and the admin flow to send them
-- Partner self-signup
-- A real partner submission route, with the duplicate-flag rule applied
-- Two transactional emails: partner invitation, and the ops new-lead alert the
-  Production Build Plan lists under its Phase 3
-
-This is a coherent chunk of work rather than a list of fixes, and none of it is started.
+- Two transactional emails: partner invitation (staff copy the link by hand for now),
+  and the ops new-lead alert the Production Build Plan lists under its Phase 3
 
 ## Operational, not code
 

@@ -92,7 +92,7 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
             <div>
               <h1 className="flex flex-wrap items-center gap-2 text-heading-lg text-on-surface">
                 {lead.name}
-                <Badge variant={lead.isNewCustomer ? "success" : "grey"} data-customer-tag>
+                <Badge variant={lead.isNewCustomer ? "success" : "pending"} dot={!lead.isNewCustomer} data-customer-tag>
                   {customerTag(lead)}
                 </Badge>
               </h1>

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Building2, ChevronUp, ClipboardCheck, Inbox, LayoutDashboard, LogOut, Settings, UserCog, Users, Wallet } from "lucide-react";
@@ -55,10 +56,7 @@ export function AppSidebar({ staffName, staffEmail, role, permissions }: Props) 
     <Sidebar>
       <SidebarHeader>
         <div className="flex flex-col gap-3 px-2 py-1.5">
-          <span className="font-serif text-lg italic tracking-tight text-sidebar-primary">
-            Yellow
-            <span className="font-semibold not-italic text-sidebar-foreground">Metal</span>
-          </span>
+          <Image src="/ym-logo.png" alt="YellowMetal" width={719} height={312} priority className="h-auto w-32" />
           <span className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-muted">
             Workspace
           </span>
@@ -78,33 +76,26 @@ export function AppSidebar({ staffName, staffEmail, role, permissions }: Props) 
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              {/* Every member has Settings (their own account), so it needs no permission. */}
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  disabled
-                  aria-disabled="true"
-                  title="Settings are not available yet"
-                >
-                  <Settings />
-                  <span>Settings</span>
-                  <span className="ml-auto text-[10px] uppercase tracking-wider text-sidebar-muted">
-                    Soon
-                  </span>
+                <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/settings")}>
+                  <Link href="/dashboard/settings">
+                    <Settings />
+                    <span>Settings</span>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      {/*
-        There is no partner-facing route. Partner authentication, invitations and
-        real lead submission are a separate piece of work — see docs/TODO.md. An
-        earlier static mock at /partner was removed rather than left implying a
-        working portal.
-      */}
+      {/* Partners sign in and submit leads in the separate LeadBridge app, not here. */}
       <SidebarFooter>
         {/* Profile menu (standup 2026-10-15): click the name to see the account and, for admins, Manage team. */}
         <details className="group rounded-md">
-          <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md px-2 py-1.5 hover:bg-sidebar-accent [&::-webkit-details-marker]:hidden">
+          <summary
+            aria-label={`Account menu: ${staffName}, ${ROLE_LABELS[role]}`}
+            className="flex cursor-pointer list-none items-center gap-2 rounded-md px-2 py-1.5 hover:bg-sidebar-accent [&::-webkit-details-marker]:hidden">
             <span
               aria-hidden="true"
               className="flex size-7 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground"

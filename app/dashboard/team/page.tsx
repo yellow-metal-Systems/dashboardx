@@ -58,7 +58,7 @@ export default async function TeamPage() {
                     </TableCell>
                     <TableCell>
                       {/* The server refuses changing your own role or account; don't offer it. */}
-                      {self ? ROLE_LABELS[m.role] : <MemberRole memberId={m.id} role={m.role} />}
+                      {self ? ROLE_LABELS[m.role] : <MemberRole memberId={m.id} name={m.name} role={m.role} />}
                     </TableCell>
                     <TableCell>
                       <Badge className={cn("border-transparent", PARTNER_STATUS_BADGE_CLASSES[m.isActive ? "active" : "disabled"])}>

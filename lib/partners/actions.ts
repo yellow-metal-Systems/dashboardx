@@ -136,7 +136,7 @@ export async function markRewardPaidAction(_prev: RewardFormState, fd: FormData)
 }
 
 export async function setRewardRulesAction(_prev: RewardFormState, fd: FormData) {
-  return adminAction((email) =>
+  const res = await adminAction((email) =>
     setRewardRules(
       {
         basePercent: Number(text(fd, "basePercent")),
@@ -149,6 +149,9 @@ export async function setRewardRulesAction(_prev: RewardFormState, fd: FormData)
     ),
     "rewardRules.manage"
   );
+  // The rules form lives on Settings now; refresh it as well as Rewards.
+  if (res.ok) revalidatePath("/dashboard/settings");
+  return res;
 }
 
 export type RevealState = { error: string | null; details?: { pan: string; accountHolder: string; accountNumber: string; ifsc: string } };

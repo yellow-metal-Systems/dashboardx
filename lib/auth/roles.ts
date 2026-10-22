@@ -2,7 +2,7 @@
 // LeadDesk roles and what each may do (standup 2026-10-15, confirmed 2026-10-19):
 //
 //   admin               everything, including partners, rewards, the LMS review
-//                       queue, reward rules and the team
+//                       queue, reward rules, the team and integration status
 //   financial_operator  leads only: view them and change their status. Nothing else.
 //   customer_support    leads only, read-only: view them, change nothing.
 //
@@ -29,6 +29,7 @@ export const PERMISSIONS = [
   "rewards.manage",
   "rewardRules.manage",
   "team.manage",
+  "integrations.view",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 

@@ -21,7 +21,7 @@ function SubmitButton() {
   );
 }
 
-export function LoginForm() {
+export function LoginForm({ next }: { next: string }) {
   const [state, formAction] = useFormState<LoginState, FormData>(signIn, { error: null });
 
   return (
@@ -33,6 +33,7 @@ export function LoginForm() {
         </p>
 
         <form action={formAction} className="mt-6">
+          <input type="hidden" name="next" value={next} />
           <FieldGroup>
             <Field>
               <FieldLabel htmlFor="email">Email</FieldLabel>

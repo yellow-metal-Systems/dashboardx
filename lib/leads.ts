@@ -250,12 +250,18 @@ const NEUTRAL_BADGE =
 const SUCCESS_BADGE = "bg-success-soft font-bold text-on-success-soft hover:bg-success-soft";
 const ERROR_BADGE = "bg-error-soft font-bold text-on-error-soft hover:bg-error-soft";
 
+// Leads still being worked carry the colour (amber: someone has to act); final
+// ones are outlined and quiet, so a long table points the eye at open work.
+const OPEN_BADGE = "bg-pending-soft font-bold text-on-pending-soft hover:bg-pending-soft";
+const DONE_BADGE = "border border-success-soft bg-transparent font-bold text-on-success-soft hover:bg-transparent";
+const CLOSED_BADGE = "border border-outline-variant bg-transparent font-semibold text-on-surface-variant hover:bg-transparent";
+
 export const STATUS_BADGE_CLASSES: Record<LeadStatus, string> = {
-  LEAD_CREATED: NEUTRAL_BADGE,
-  CONTACTED: NEUTRAL_BADGE,
-  BRANCH_VISIT_SCHEDULED: NEUTRAL_BADGE,
-  DISBURSED: SUCCESS_BADGE,
-  REJECTED: ERROR_BADGE,
+  LEAD_CREATED: OPEN_BADGE,
+  CONTACTED: OPEN_BADGE,
+  BRANCH_VISIT_SCHEDULED: OPEN_BADGE,
+  DISBURSED: DONE_BADGE,
+  REJECTED: CLOSED_BADGE,
 };
 
 /** Safe for any status value, including one this build has never seen. */

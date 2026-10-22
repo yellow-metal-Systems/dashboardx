@@ -125,10 +125,23 @@ async function keepAnAdmin(tx: Prisma.TransactionClient, losingAdmin: { id: stri
   if (others === 0) throw new TeamError("LeadDesk needs at least one active admin.");
 }
 
+/** Serializable: two admins demoting each other at once can't both pass keepAnAdmin. */
+async function teamChange(fn: (tx: Prisma.TransactionClient) => Promise<void>): Promise<void> {
+  try {
+    await prisma.$transaction(fn, { isolationLevel: "Serializable" });
+  } catch (err) {
+    // P2034: Postgres refused the loser of two overlapping changes.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034") {
+      throw new TeamError("Someone else changed the team at the same time. Reload and try again.");
+    }
+    throw err;
+  }
+}
+
 export async function setMemberRole(memberId: string, role: string, actingUserId: string): Promise<void> {
   const next = requireRole(role);
   if (memberId === actingUserId) throw new TeamError("You can't change your own role.");
-  await prisma.$transaction(async (tx) => {
+  await teamChange(async (tx) => {
     const member = await tx.adminUser.findUnique({ where: { id: memberId } });
     if (!member) throw new TeamError("Team member not found.");
     if (next !== "admin") await keepAnAdmin(tx, member);
@@ -139,7 +152,7 @@ export async function setMemberRole(memberId: string, role: string, actingUserId
 /** Turning an account off signs it out at its next page load (the layout re-reads the role). */
 export async function setMemberActive(memberId: string, active: boolean, actingUserId: string): Promise<void> {
   if (memberId === actingUserId) throw new TeamError("You can't turn off your own account.");
-  await prisma.$transaction(async (tx) => {
+  await teamChange(async (tx) => {
     const member = await tx.adminUser.findUnique({ where: { id: memberId } });
     if (!member) throw new TeamError("Team member not found.");
     if (!active) await keepAnAdmin(tx, member);

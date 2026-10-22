@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { JoinForm } from "@/components/auth/join-form";
@@ -19,11 +20,8 @@ export default async function JoinPage({ params }: { params: { token: string } }
     <main className="flex min-h-svh items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <span className="font-serif text-2xl italic tracking-tight text-primary">
-            Yellow
-            <span className="font-semibold not-italic text-on-surface">Metal</span>
-          </span>
-          <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-on-surface-variant">
+          <Image src="/ym-logo.png" alt="YellowMetal" width={719} height={312} priority className="mx-auto h-auto w-44" />
+          <p className="mt-3 text-xs font-semibold uppercase tracking-widest text-on-surface-variant">
             LeadDesk
           </p>
         </div>
