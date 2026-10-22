@@ -68,14 +68,16 @@ function RoleSelect({
   value,
   onChange,
   id,
+  label = "Role",
 }: {
   value: StaffRole | "";
   onChange: (r: StaffRole) => void;
   id?: string;
+  label?: string;
 }) {
   return (
     <Select value={value} onValueChange={(v) => onChange(v as StaffRole)}>
-      <SelectTrigger id={id} aria-label="Role">
+      <SelectTrigger id={id} aria-label={label}>
         <SelectValue placeholder="Choose a role" />
       </SelectTrigger>
       <SelectContent>
@@ -181,9 +183,11 @@ function InviteMemberForm({ onDone }: { onDone: () => void }) {
 /** Pick a new role, then Save. The server refuses your own role and removing the last admin. */
 export function MemberRole({
   memberId,
+  name,
   role,
 }: {
   memberId: string;
+  name: string;
   role: StaffRole;
 }) {
   const [next, setNext] = useState<StaffRole>(role);
@@ -197,7 +201,7 @@ export function MemberRole({
         <input type="hidden" name="memberId" value={memberId} />
         <input type="hidden" name="role" value={next} />
         <div className="w-48">
-          <RoleSelect value={next} onChange={setNext} />
+          <RoleSelect value={next} onChange={setNext} label={`Role for ${name}`} />
         </div>
         {next !== role && <Pending idle="Save" busy="Saving…" variant="dark" />}
       </form>

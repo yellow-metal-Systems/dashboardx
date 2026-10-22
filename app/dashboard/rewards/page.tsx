@@ -6,10 +6,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { RewardRulesForm } from "@/components/rewards/reward-controls";
 import { requirePermission } from "@/lib/auth/session";
-import { formatDate, formatInr } from "@/lib/leads";
-import { currentRewardRules, listRewardPartners, rewardRulesHistory, type PartnerRewardRow } from "@/lib/partners/rewards";
+import { formatInr } from "@/lib/leads";
+import { listRewardPartners, type PartnerRewardRow } from "@/lib/partners/rewards";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -48,11 +47,7 @@ export default async function RewardsPage({ searchParams }: { searchParams: { q?
   const admin = access.permissions.includes("rewards.manage");
   // Narrower than "admin": financial operators see amounts but can't change the rules.
   const editRules = access.permissions.includes("rewardRules.manage");
-  const [{ rows, totals, awaiting }, rules, history] = await Promise.all([
-    listRewardPartners(admin),
-    editRules ? currentRewardRules() : Promise.resolve(null),
-    editRules ? rewardRulesHistory() : Promise.resolve([]),
-  ]);
+  const { rows, totals, awaiting } = await listRewardPartners(admin);
   const q = (searchParams.q ?? "").trim();
   const shown = q ? rows.filter((r) => r.orgName.toLowerCase().includes(q.toLowerCase())) : rows;
 
@@ -87,26 +82,11 @@ export default async function RewardsPage({ searchParams }: { searchParams: { q?
         </Card>
       )}
 
-      {rules && (
-        <Card>
-          <CardContent className={cn("flex flex-col gap-3", PAD)}>
-            <RewardRulesForm current={rules} />
-            {history.length > 1 && (
-              <details className="text-sm">
-                <summary className="cursor-pointer font-bold text-on-surface-variant">Rule changes</summary>
-                <ul className="mt-2 flex flex-col gap-1 text-xs text-on-surface-variant">
-                  {history.map((h) => (
-                    <li key={h.effectiveFrom.toISOString()}>
-                      {formatDate(h.effectiveFrom.toISOString())}: {h.basePercent}% · {h.bonusPercent}% above ₹{h.bonusThreshold / 10_000_000} crore
-                      {h.by ? ` · ${h.by.replace(/^staff:/, "")}` : ""}
-                      {h.reason ? ` — ${h.reason}` : ""}
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            )}
-          </CardContent>
-        </Card>
+      {editRules && (
+        <p className="text-sm text-on-surface-variant">
+          Reward rules (rates and the monthly bonus) are in{" "}
+          <Link href="/dashboard/settings" className="text-link hover:underline">Settings</Link>.
+        </p>
       )}
 
       {awaiting.length > 0 && (

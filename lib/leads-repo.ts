@@ -356,8 +356,8 @@ export type DisbursementDetails = {
 };
 
 export class TerminalStatusError extends Error {
-  constructor(from: string) {
-    super(`This lead is already ${statusLabel(from)} and cannot be moved again.`);
+  constructor(from: string, message = `This lead is already ${statusLabel(from)} and cannot be moved again.`) {
+    super(message);
     this.name = "TerminalStatusError";
   }
 }
@@ -400,8 +400,10 @@ export async function updateLeadStatusRepo(
       throw new TerminalStatusError(current.status);
     }
 
-    await tx.lead.update({
-      where: { id },
+    // Only if the status is still what we read: a concurrent change (say, to
+    // DISBURSED) between the read and this write must not be overwritten.
+    const updated = await tx.lead.updateMany({
+      where: { id, status: current.status },
       data: {
         status,
         ...(disbursement?.loanId ? { loanId: disbursement.loanId } : {}),
@@ -420,6 +422,9 @@ export async function updateLeadStatusRepo(
           : {}),
       },
     });
+    if (updated.count !== 1) {
+      throw new TerminalStatusError(current.status, "Someone else changed this lead's status just now. Reload and try again.");
+    }
 
     await tx.leadActivity.create({
       data: {

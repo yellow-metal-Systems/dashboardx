@@ -50,6 +50,30 @@ function RejectApplication({ applicationId, name }: { applicationId: string; nam
 }
 
 /**
+ * Approving creates a partner and a live invite link, which can't be undone,
+ * so it asks once more — the same two steps as Reject.
+ */
+function ApproveApplication({ applicationId, name, approve }: { applicationId: string; name: string; approve: (fd: FormData) => void }) {
+  const [open, setOpen] = useState(false);
+  if (!open) {
+    return (
+      <Button type="button" size="sm" variant="dark" onClick={() => setOpen(true)}>
+        Approve
+      </Button>
+    );
+  }
+  return (
+    <form action={approve} className="flex items-center gap-2">
+      <input type="hidden" name="applicationId" value={applicationId} />
+      <Pending idle={`Approve ${name}`} busy="Approving…" variant="dark" />
+      <Button type="button" size="sm" variant="outline" onClick={() => setOpen(false)}>
+        Cancel
+      </Button>
+    </form>
+  );
+}
+
+/**
  * The pending queue. Approving revalidates the page, which drops the approved row,
  * so the approve result (the one-time invite link) lives here, above the rows,
  * where it survives that re-render.
@@ -93,11 +117,8 @@ export function PendingApplications({ rows }: { rows: PendingRow[] }) {
                 <TableCell>{a.town}</TableCell>
                 <TableCell className="whitespace-nowrap">{formatDateTime(a.createdAt)}</TableCell>
                 <TableCell>
-                  <div className="flex items-start justify-end gap-2">
-                    <form action={approve}>
-                      <input type="hidden" name="applicationId" value={a.id} />
-                      <Pending idle="Approve" busy="Approving…" variant="dark" />
-                    </form>
+                  <div className="flex items-start justify-end gap-6">
+                    <ApproveApplication applicationId={a.id} name={a.name} approve={approve} />
                     <RejectApplication applicationId={a.id} name={a.name} />
                   </div>
                 </TableCell>

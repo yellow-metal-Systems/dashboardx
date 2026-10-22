@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 
 import { prisma } from "@/lib/prisma";
-import { firstLeadIds, getLeadDetail, listLeads, lmsStatusTimes } from "@/lib/leads-repo";
+import { TerminalStatusError, firstLeadIds, getLeadDetail, listLeads, lmsStatusTimes, updateLeadStatusRepo } from "@/lib/leads-repo";
 
 // "New customer" = the first lead ever from a mobile, decided across the whole
 // table (the same rule partner rewards use). SKIPS without TEST_DATABASE_URL.
@@ -64,5 +64,28 @@ db("new customer (database)", () => {
     }
     const detail = await getLeadDetail("YMLEAD0000000020");
     expect(detail?.actorNames).toEqual({ [`partner:${user.id}`]: "Asha Rao", "api:pfx12345": "API key “Production”" });
+  });
+
+  const outboxRows = (leadId: string) => prisma.leadStatusOutbox.count({ where: { leadId } });
+
+  it("a final status can't be changed: disbursed, then rejected, sends one webhook", async () => {
+    await lead("YMLEAD0000000030", "9800000030", "2026-10-01T10:00:00Z");
+    await updateLeadStatusRepo("YMLEAD0000000030", "DISBURSED", "staff:a@y.co", { amount: 50_000 });
+    await expect(updateLeadStatusRepo("YMLEAD0000000030", "REJECTED", "staff:a@y.co")).rejects.toBeInstanceOf(TerminalStatusError);
+    expect((await prisma.lead.findUniqueOrThrow({ where: { id: "YMLEAD0000000030" } })).status).toBe("DISBURSED");
+    expect(await outboxRows("YMLEAD0000000030")).toBe(1);
+  });
+
+  it("of two simultaneous changes from Contacted, exactly one goes through", async () => {
+    await prisma.lead.create({ data: { id: "YMLEAD0000000031", name: "x", mobile: "9800000031", pinCode: "560001", status: "CONTACTED" } });
+    const results = await Promise.allSettled([
+      updateLeadStatusRepo("YMLEAD0000000031", "DISBURSED", "staff:a@y.co", { amount: 50_000 }),
+      updateLeadStatusRepo("YMLEAD0000000031", "REJECTED", "staff:b@y.co"),
+    ]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const failed = results.find((r) => r.status === "rejected") as PromiseRejectedResult;
+    expect(failed.reason).toBeInstanceOf(TerminalStatusError);
+    expect(await outboxRows("YMLEAD0000000031")).toBe(1);
+    expect(await prisma.leadActivity.count({ where: { leadId: "YMLEAD0000000031" } })).toBe(1);
   });
 });

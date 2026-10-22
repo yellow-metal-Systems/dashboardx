@@ -82,6 +82,18 @@ db("team, sign-ups and onboarding (database)", () => {
       ]);
     });
 
+    it("two admins demoting each other at once still leaves one admin", async () => {
+      const a = await admin();
+      const b = await prisma.adminUser.create({ data: { email: "b@ym.example", name: "B", role: "admin", passwordHash: "x" } });
+      const results = await Promise.allSettled([
+        setMemberRole(a.id, "customer_support", b.id),
+        setMemberRole(b.id, "customer_support", a.id),
+      ]);
+      expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+      expect((results.find((r) => r.status === "rejected") as PromiseRejectedResult).reason).toBeInstanceOf(TeamError);
+      expect(await prisma.adminUser.count({ where: { role: "admin", isActive: true } })).toBe(1);
+    });
+
     it("the database refuses an unknown role", async () => {
       await expect(
         prisma.adminUser.create({ data: { email: "x@ym.example", name: "X", role: "staff", passwordHash: "x" } })

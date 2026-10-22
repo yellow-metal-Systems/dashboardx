@@ -12,6 +12,8 @@ export type StaffSession = {
   name?: string;
   /** As at sign-in; display only. Access is always checked against the database. */
   role?: StaffRole;
+  /** Fingerprint of the password hash at sign-in: a password change ends older sessions. */
+  pwv?: string;
 };
 
 export const SESSION_COOKIE_NAME = "ym_admin_session";
@@ -42,10 +44,30 @@ export type SignedInStaff = {
   role: StaffRole;
 };
 
+/** sha256(passwordHash), first 16 hex chars. Web Crypto, so this file stays edge-safe for middleware. */
+export async function passwordVersion(passwordHash: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(passwordHash));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("").slice(0, 16);
+}
+
+/** False once the password has changed since this session signed in (or it predates pwv). */
+export async function sessionIsCurrent(session: Pick<StaffSession, "userId" | "pwv">): Promise<boolean> {
+  if (!session.userId || !session.pwv) return false;
+  const row = await prisma.adminUser.findUnique({ where: { id: session.userId }, select: { passwordHash: true } });
+  return !!row && (await passwordVersion(row.passwordHash)) === session.pwv;
+}
+
+/** Only the path inside LeadDesk that login may send you back to, else /dashboard. */
+export function safeNextPath(next: unknown): string {
+  if (typeof next !== "string" || next.includes("//") || next.includes("\\")) return "/dashboard";
+  return /^\/dashboard(?:[/?]|$)/.test(next) ? next : "/dashboard";
+}
+
 /** The signed-in staff member, or null. */
 export async function currentStaff(): Promise<SignedInStaff | null> {
   const session = await getSession();
   if (!session.userId || !session.email) return null;
+  if (!(await sessionIsCurrent(session))) return null;
   return {
     userId: session.userId,
     email: session.email,

@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { prisma } from "../prisma";
 import { parseRole } from "./roles";
-import { getSession } from "./session";
+import { getSession, passwordVersion, safeNextPath } from "./session";
 import { verifyPassword } from "./password";
 
 const credentials = z.object({
@@ -61,6 +61,7 @@ export async function signIn(_prev: LoginState, formData: FormData): Promise<Log
   session.email = user.email;
   session.name = user.name;
   session.role = parseRole(user.role) ?? "customer_support";
+  session.pwv = await passwordVersion(user.passwordHash);
   await session.save();
 
   await prisma.adminUser.update({
@@ -68,7 +69,7 @@ export async function signIn(_prev: LoginState, formData: FormData): Promise<Log
     data: { lastLoginAt: new Date() },
   });
 
-  redirect("/dashboard");
+  redirect(safeNextPath(formData.get("next")));
 }
 
 export async function signOut(): Promise<void> {

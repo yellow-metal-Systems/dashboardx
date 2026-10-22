@@ -258,7 +258,8 @@ export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 
             ["New", stats.newCustomers],
             ["Disbursed", stats.disbursed],
           ].map(([label, value]) => (
-            <Card key={label}>
+            // Raised and brighter than the table below, so the eye lands on the numbers first.
+            <Card key={label} className="bg-raised">
               <CardContent className="p-3 md:p-4">
                 <p className="text-xs font-medium text-on-surface-variant">{label}</p>
                 <p className="mt-1 text-heading-lg tabular-nums text-on-surface">{value}</p>
@@ -268,7 +269,7 @@ export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 
         </div>
       </div>
 
-      <Card>
+      <Card className="shadow-e1">
         <CardContent className="flex flex-col gap-4 pt-6 md:pt-9">
           <LeadFilters filters={filters} onChange={setFilters} partners={partners} branches={branches} />
 
@@ -323,7 +324,9 @@ export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 
                           {lead.name}
                         </Link>
                         <Badge
-                          variant={lead.isNewCustomer ? "success" : "grey"}
+                          // Amber, not grey: a duplicate is worth a look before anyone pays a reward twice.
+                          variant={lead.isNewCustomer ? "success" : "pending"}
+                          dot={!lead.isNewCustomer}
                           className="ml-2 align-middle"
                           data-customer-tag
                         >

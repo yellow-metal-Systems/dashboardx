@@ -16,7 +16,8 @@ export async function middleware(request: NextRequest) {
   // database, so this adds no query to every navigation.
   const session = await getIronSession<StaffSession>(request, response, sessionOptions);
 
-  if (!session.userId) {
+  // No pwv: a cookie from before password fingerprints, which the pages would refuse anyway.
+  if (!session.userId || !session.pwv) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     // Bring them back to where they were trying to go after signing in.
