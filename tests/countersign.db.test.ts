@@ -149,6 +149,18 @@ db("partner agreement: countersign and approve (database)", () => {
     expect(await prisma.partner.count()).toBe(0);
   });
 
+  it("refuses if today's code would no longer render exactly what was signed", async () => {
+    const app = await individual();
+    const agreement = await signed(app);
+    // As if the template wording changed after sending: the stored fields now render different bytes.
+    const fields = agreement.fields as Record<string, unknown>;
+    await prisma.partnerAgreement.update({ where: { id: agreement.id }, data: { fields: { ...fields, partnerAddress: "Somewhere else 560001" } } });
+    await expect(countersignAndApprove(app.id, OK, ADMIN)).rejects.toThrow(/wording has changed/);
+    await prisma.partnerAgreement.update({ where: { id: agreement.id }, data: { fields: fields as object, templateVersion: "bc-v0" } });
+    await expect(countersignAndApprove(app.id, OK, ADMIN)).rejects.toThrow(/wording has changed/);
+    expect(await prisma.partner.count()).toBe(0);
+  });
+
   it("approves once, even when two admins press it together", async () => {
     const app = await individual();
     await signed(app);

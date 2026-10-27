@@ -18,7 +18,7 @@ import {
   type DsaRates,
 } from "@/lib/agreements/fields";
 import { istDate } from "@/lib/agreements/format";
-import { renderAgreement } from "@/lib/agreements/render";
+import { renderAgreement, sha256 } from "@/lib/agreements/render";
 import { AgreementFileError, readAgreementFile, storeAgreementFile } from "@/lib/agreements/files";
 import { INVITE_TTL_DAYS, MOBILE_TAKEN, PartnerAccountError, insertPartnerWithInvite, isUniqueViolation } from "./onboarding";
 
@@ -387,7 +387,14 @@ export async function countersignAndApprove(
     throw err;
   }
 
+  // The executed copy is rendered again from the stored fields, so today's code
+  // must still render exactly what was signed. If the wording or the renderer
+  // changed since sending, it doesn't, and the agreement has to be resent.
   const fields = agreement.fields as unknown as AgreementFields;
+  const again = await renderAgreement(fields, { reference: agreement.id });
+  if (agreement.templateVersion !== TEMPLATE_VERSIONS[fields.template] || sha256(again) !== agreement.unsignedSha256) {
+    throw new ApplicationError("The agreement wording has changed since this was signed, so it can't be countersigned. Reject it and ask the applicant to apply again.");
+  }
   const designation = input.designation?.trim().slice(0, 100) || null;
   const executed = await renderAgreement(fields, {
     reference: agreement.id,
