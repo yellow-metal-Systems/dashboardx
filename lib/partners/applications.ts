@@ -137,6 +137,9 @@ export function companyDetails(): { name: string; office: string } {
   return { name: name || "[Yellow Metal legal name]", office: office || "[Yellow Metal registered office address]" };
 }
 
+/** The payout-rate fields of the Send agreement form, for both templates. */
+export const RATE_FIELDS = ["perQualifiedLeadRs", "disbursedPercent", "disbursedFlatRs", "perVerifiedApplicationRs", "perActiveLoanMonthlyRs", "collectedPercent"];
+
 /** Rates from a form: each field a number or blank (null). Throws a readable error for anything else. */
 export function parseRates(template: AgreementTemplate, raw: Record<string, string | undefined>): DsaRates | BcRates {
   const num = (k: string) => {
@@ -458,4 +461,25 @@ export async function countersignAndApprove(
   });
   if (sent.status === "FAILED") await addEvent(prisma, app.id, "email_failed", "system", { template: "approved" });
   return { partnerId: created.partnerId, token: created.token, name: app.name, email: app.email, emailStatus: sent.status };
+}
+
+// --- the stored PDFs, for staff ------------------------------------------------------
+
+export type AgreementPdfKind = "sent" | "executed";
+
+/**
+ * The current agreement's PDF: as sent for signing, or the executed copy once
+ * countersigned. Null if there is none yet. Throws AgreementFileError if the
+ * stored bytes no longer match their fingerprint.
+ */
+export async function agreementPdf(applicationId: string, kind: AgreementPdfKind): Promise<{ bytes: Buffer; fileName: string } | null> {
+  const a = await prisma.partnerAgreement.findFirst({
+    where: { applicationId, status: { not: "VOID" } },
+    select: { id: true, template: true, status: true, unsignedFileId: true, unsignedSha256: true, executedFileId: true, executedSha256: true },
+  });
+  if (!a) return null;
+  const name = `Yellow-Metal-${a.template}-Agreement-${a.id.slice(0, 8)}`;
+  if (kind === "sent") return { bytes: await readAgreementFile(a.unsignedFileId, a.unsignedSha256), fileName: `${name}.pdf` };
+  if (a.status !== "EXECUTED" || !a.executedFileId || !a.executedSha256) return null;
+  return { bytes: await readAgreementFile(a.executedFileId, a.executedSha256), fileName: `${name}-signed.pdf` };
 }

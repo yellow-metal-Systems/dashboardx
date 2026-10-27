@@ -10,6 +10,7 @@ import {
   ApplicationError,
   countersignAndApprove,
   inviteUrl,
+  RATE_FIELDS,
   parseRates,
   rejectApplication,
   resendAgreement,
@@ -216,8 +217,6 @@ export async function rejectApplicationAction(_prev: ApplicationFormState, fd: F
 }
 
 // --- the partner agreement (partners.manage) -----------------------------------
-
-const RATE_FIELDS = ["perQualifiedLeadRs", "disbursedPercent", "disbursedFlatRs", "perVerifiedApplicationRs", "perActiveLoanMonthlyRs", "collectedPercent"];
 
 /** The form's payout-rate fields for this application's agreement (BC or DSA). */
 async function ratesFrom(fd: FormData, applicationId: string) {
