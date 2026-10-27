@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from "vitest";
 
 import { prisma } from "@/lib/prisma";
 import { TeamError, acceptInvite, findInvite, inviteMember, listTeam, setMemberActive, setMemberRole } from "@/lib/team/team";
-import { ApplicationError, approveApplication, countPendingApplications, rejectApplication } from "@/lib/partners/applications";
+import { countPendingApplications, rejectApplication } from "@/lib/partners/applications";
 import { AdminError, PartnerAccountError, onboardPartner, setGstinRequired } from "@/lib/partners/onboarding";
 import { verifyPassword } from "@/lib/auth/password";
 import { updateLeadStatusRepo } from "@/lib/leads-repo";
@@ -105,25 +105,12 @@ db("team, sign-ups and onboarding (database)", () => {
     const apply = (mobile = "9845000001") =>
       prisma.partnerApplication.create({ data: { name: "Suresh Gowda", mobile, town: "Doddaballapur" } });
 
-    it("approving creates an individual partner with an invite, once", async () => {
-      const app = await apply();
+    // Approving (countersign and approve) is tested in agreement-flow.db.test.ts.
+    it("counts applications waiting for an admin", async () => {
+      await apply();
       expect(await countPendingApplications()).toBe(1);
-      const { token, partnerId } = await approveApplication(app.id, "boss@ym.example");
-      expect(token).toBeTruthy();
-      const p = await prisma.partner.findUniqueOrThrow({ where: { id: partnerId }, include: { users: true } });
-      expect(p).toMatchObject({ orgName: "Suresh Gowda", type: "INDIVIDUAL", town: "Doddaballapur", contactEmail: null, status: "invited" });
-      expect(p.users.map((u) => u.mobile)).toEqual(["9845000001"]);
-      const reviewed = await prisma.partnerApplication.findUniqueOrThrow({ where: { id: app.id } });
-      expect([reviewed.status, reviewed.partnerId, reviewed.reviewedBy]).toEqual(["APPROVED", partnerId, "boss@ym.example"]);
-      expect(await countPendingApplications()).toBe(0);
-      await expect(approveApplication(app.id, "boss@ym.example")).rejects.toThrow(/already reviewed/);
-    });
-
-    it("an approval that can't go through goes back to the queue", async () => {
-      await onboardPartner({ type: "INDIVIDUAL", personName: "Taken", mobile: "9845000002", town: "Malur", staffEmail: "s" });
-      const app = await apply("9845000002");
-      await expect(approveApplication(app.id, "boss@ym.example")).rejects.toThrow(ApplicationError);
-      expect((await prisma.partnerApplication.findUniqueOrThrow({ where: { id: app.id } })).status).toBe("PENDING");
+      await apply("9845000002");
+      expect(await countPendingApplications()).toBe(2);
     });
 
     it("rejecting needs a reason and happens once", async () => {

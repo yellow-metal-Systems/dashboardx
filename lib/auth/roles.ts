@@ -1,8 +1,9 @@
 // =============================================================================
 // LeadDesk roles and what each may do (standup 2026-10-15, confirmed 2026-10-19):
 //
-//   admin               everything, including partners, rewards, the LMS review
-//                       queue, reward rules, the team and integration status
+//   admin               everything, including partners (and countersigning their
+//                       agreements), rewards, the LMS review queue, reward
+//                       rules, the team and integration status
 //   financial_operator  leads only: view them and change their status. Nothing else.
 //   customer_support    leads only, read-only: view them, change nothing.
 //
@@ -25,6 +26,7 @@ export const PERMISSIONS = [
   "lms.resolve",
   "partners.view",
   "partners.manage",
+  "agreements.countersign",
   "rewards.view",
   "rewards.manage",
   "rewardRules.manage",

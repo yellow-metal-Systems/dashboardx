@@ -4,7 +4,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { IS_PRODUCTION, LEADBRIDGE_URL } from "@/lib/env";
 import { sendEmail } from "@/lib/email";
-import { agreementSent, rejected } from "@/lib/email-templates";
+import { agreementSent, approved, rejected } from "@/lib/email-templates";
 import {
   BLANK_RATES,
   TEMPLATE_VERSIONS,
@@ -19,8 +19,8 @@ import {
 } from "@/lib/agreements/fields";
 import { istDate } from "@/lib/agreements/format";
 import { renderAgreement } from "@/lib/agreements/render";
-import { storeAgreementFile } from "@/lib/agreements/files";
-import { PartnerAccountError, createPartnerWithInvite } from "./onboarding";
+import { AgreementFileError, readAgreementFile, storeAgreementFile } from "@/lib/agreements/files";
+import { INVITE_TTL_DAYS, MOBILE_TAKEN, PartnerAccountError, insertPartnerWithInvite, isUniqueViolation } from "./onboarding";
 
 // =============================================================================
 // Self-service sign-ups (standup 2026-10-15) and the partner agreement (plan of
@@ -33,7 +33,7 @@ import { PartnerAccountError, createPartnerWithInvite } from "./onboarding";
 //   PENDING → AGREEMENT_SENT → SIGNED → APPROVED, or → REJECTED
 //
 // Every step claims the application with a conditional update, so two admins
-// acting at once can't both send, resend or reject.
+// acting at once can't both send, resend, reject or approve.
 // =============================================================================
 
 export class ApplicationError extends Error {}
@@ -321,41 +321,141 @@ export async function rejectApplication(applicationId: string, reason: string, s
   }
 }
 
-// --- approval (replaced by countersign-and-approve in the next step, A7) -------------
+// --- countersign and approve -------------------------------------------------------
 
-/** Approves a pending application. Returns the invite token (shown once) and the new partner. */
-export async function approveApplication(
+/** The partner opens this in LeadBridge to set a password. */
+export function inviteUrl(token: string): string {
+  return `${LEADBRIDGE_URL.replace(/\/+$/, "")}/invite/${token}`;
+}
+
+/** LeadBridge's page on adding the app to a phone's home screen. */
+export function installUrl(): string {
+  return `${LEADBRIDGE_URL.replace(/\/+$/, "")}/install`;
+}
+
+export type Approval = {
+  partnerId: string;
+  /** The raw invite token, returned once so the admin can also share the link by hand. */
+  token: string;
+  name: string;
+  email: string;
+  emailStatus: "LOGGED" | "SENT" | "FAILED";
+};
+
+/**
+ * The last step: an admin countersigns the signed agreement for Yellow Metal and
+ * the applicant becomes a partner. Only a SIGNED application, checked here. The
+ * executed PDF (both signatures and the signing certificate) is rendered from the
+ * stored fields, and in one transaction: the agreement moves to EXECUTED with
+ * that file, the application to APPROVED, and the partner, its login and invite
+ * are created. Any failure rolls all of it back and the application stays
+ * SIGNED. Then the welcome email goes out with the executed PDF attached and
+ * the set-password link.
+ */
+export async function countersignAndApprove(
   applicationId: string,
-  staffEmail: string
-): Promise<{ token: string; partnerId: string; name: string }> {
-  // Claim it first, so two staff approving at once can't create two partners.
-  const claimed = await prisma.partnerApplication.updateMany({
-    where: { id: applicationId, status: "PENDING" },
-    data: { status: "APPROVED", reviewedBy: staffEmail, reviewedAt: new Date() },
+  input: { confirmed: boolean; designation?: string | null },
+  staffEmail: string,
+  now = new Date()
+): Promise<Approval> {
+  if (!input.confirmed) throw new ApplicationError("Tick the box to countersign the agreement for Yellow Metal.");
+  const app = await prisma.partnerApplication.findUnique({
+    where: { id: applicationId },
+    include: { agreements: { where: { status: "SIGNED" } } },
   });
-  if (claimed.count !== 1) throw new ApplicationError("This application was already reviewed.");
-  const app = await prisma.partnerApplication.findUniqueOrThrow({ where: { id: applicationId } });
+  if (!app) throw new ApplicationError("Application not found.");
+  const agreement = app.agreements[0];
+  if (app.status !== "SIGNED" || !agreement || !agreement.signedAt || !agreement.signerTypedName) {
+    throw new ApplicationError(
+      app.status === "APPROVED" || app.status === "REJECTED"
+        ? "This application was already approved or rejected."
+        : "The applicant hasn't signed the agreement yet."
+    );
+  }
+  if (!app.email) throw new ApplicationError("This application has no email address.");
+  const signer = await prisma.adminUser.findUnique({ where: { email: staffEmail }, select: { name: true } });
+  if (!signer) throw new ApplicationError("Your LeadDesk account was not found.");
 
+  // The PDF the applicant signed must still be the one sent.
   try {
-    const { token, partnerId } = await createPartnerWithInvite({
-      orgName: app.name,
-      contactEmail: null,
-      town: app.town,
-      type: "INDIVIDUAL",
-      isOndc: false,
-      gstinRequired: false,
-      user: { name: app.name, mobile: app.mobile },
-      createdBy: staffEmail,
-    });
-    await prisma.partnerApplication.update({ where: { id: applicationId }, data: { partnerId } });
-    return { token, partnerId, name: app.name };
+    await readAgreementFile(agreement.unsignedFileId, agreement.unsignedSha256);
   } catch (err) {
-    // Put it back in the queue, e.g. the mobile number already has a login.
-    await prisma.partnerApplication.update({
-      where: { id: applicationId },
-      data: { status: "PENDING", reviewedBy: null, reviewedAt: null },
+    if (err instanceof AgreementFileError) throw new ApplicationError(`${err.message} It can't be countersigned.`);
+    throw err;
+  }
+
+  const fields = agreement.fields as unknown as AgreementFields;
+  const designation = input.designation?.trim().slice(0, 100) || null;
+  const executed = await renderAgreement(fields, {
+    reference: agreement.id,
+    partner: { name: agreement.signerTypedName, at: agreement.signedAt },
+    company: { name: signer.name, designation, at: now },
+    certificate: {
+      reference: agreement.id,
+      templateVersion: agreement.templateVersion,
+      unsignedSha256: agreement.unsignedSha256,
+      sentBy: agreement.sentBy,
+      sentAt: agreement.sentAt,
+      partner: {
+        typedName: agreement.signerTypedName,
+        email: app.email,
+        signedAt: agreement.signedAt,
+        ip: agreement.signerIp,
+        userAgent: agreement.signerUserAgent,
+      },
+      company: { name: signer.name, designation, email: staffEmail, signedAt: now },
+    },
+  });
+
+  const company = app.applicantType === "COMPANY";
+  let created: { partnerId: string; token: string };
+  try {
+    created = await prisma.$transaction(async (tx) => {
+      const claimed = await tx.partnerApplication.updateMany({
+        where: { id: app.id, status: "SIGNED" },
+        data: { status: "APPROVED", reviewedBy: staffEmail, reviewedAt: now },
+      });
+      if (claimed.count !== 1) throw new ApplicationError("This application changed meanwhile (approved or rejected). Reload the page.");
+      const file = await storeAgreementFile(executed, tx);
+      const done = await tx.partnerAgreement.updateMany({
+        where: { id: agreement.id, status: "SIGNED" },
+        data: {
+          status: "EXECUTED",
+          countersignedBy: staffEmail,
+          countersignerName: signer.name,
+          countersignedAt: now,
+          executedFileId: file.id,
+          executedSha256: file.sha256,
+        },
+      });
+      if (done.count !== 1) throw new ApplicationError("This agreement changed meanwhile. Reload the page.");
+      const partner = await insertPartnerWithInvite(tx, {
+        orgName: company ? app.companyName ?? app.name : app.name,
+        contactEmail: company ? app.email : null,
+        town: app.town,
+        type: company ? "ORGANISATION" : "INDIVIDUAL",
+        isOndc: false,
+        gstinRequired: false,
+        user: { name: app.name, mobile: app.mobile, email: app.email },
+        createdBy: staffEmail,
+      });
+      await tx.partnerApplication.update({ where: { id: app.id }, data: { partnerId: partner.partnerId } });
+      await addEvent(tx, app.id, "approved", staffEmail, { agreementId: agreement.id, partnerId: partner.partnerId, executedSha256: file.sha256 });
+      return partner;
     });
+  } catch (err) {
+    if (isUniqueViolation(err)) throw new ApplicationError(`${MOBILE_TAKEN} Nothing was changed; the application is still waiting.`);
     if (err instanceof PartnerAccountError) throw new ApplicationError(err.message);
     throw err;
   }
+
+  const sent = await sendEmail({
+    to: app.email,
+    template: "approved",
+    applicationId: app.id,
+    attachments: [{ filename: `Yellow-Metal-${fields.template}-Agreement-signed.pdf`, content: executed }],
+    ...approved({ name: app.name, template: fields.template, inviteLink: inviteUrl(created.token), inviteDays: INVITE_TTL_DAYS, installLink: installUrl() }),
+  });
+  if (sent.status === "FAILED") await addEvent(prisma, app.id, "email_failed", "system", { template: "approved" });
+  return { partnerId: created.partnerId, token: created.token, name: app.name, email: app.email, emailStatus: sent.status };
 }

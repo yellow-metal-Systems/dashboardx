@@ -44,11 +44,7 @@ async function createInvite(db: InviteDb, partnerUserId: string, createdBy: stri
   return token;
 }
 
-/**
- * Creates a partner, its first login and an invite. Returns the raw token —
- * the ONLY time it exists outside the link; it is never stored.
- */
-export async function createPartnerWithInvite(input: {
+export type NewPartnerInput = {
   orgName: string;
   contactEmail: string | null;
   town?: string | null;
@@ -57,42 +53,63 @@ export async function createPartnerWithInvite(input: {
   gstinRequired?: boolean;
   user: { name: string; mobile: string; email?: string | null };
   createdBy: string | null;
-}): Promise<{ partnerId: string; partnerUserId: string; token: string }> {
+};
+
+export type NewPartner = { partnerId: string; partnerUserId: string; token: string };
+
+export const MOBILE_TAKEN = "A user with that mobile number already exists.";
+
+/** True for the unique-mobile clash createPartnerWithInvite turns into MOBILE_TAKEN. */
+export function isUniqueViolation(err: unknown): boolean {
+  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
+}
+
+/**
+ * Inserts the partner, its first login and an invite inside the caller's
+ * transaction (countersign-and-approve creates the partner in the same
+ * transaction as the approval). The caller maps a unique clash with
+ * isUniqueViolation.
+ */
+export async function insertPartnerWithInvite(tx: Prisma.TransactionClient, input: NewPartnerInput): Promise<NewPartner> {
   const mobile = normaliseMobile(input.user.mobile);
   if (!isValidMobile(mobile)) throw new PartnerAccountError("Enter a valid 10-digit mobile number.");
   if (!input.orgName.trim()) throw new PartnerAccountError("Enter the partner's name.");
   if (!input.user.name.trim()) throw new PartnerAccountError("Enter the person's name.");
 
+  const partner = await tx.partner.create({
+    data: {
+      orgName: input.orgName.trim(),
+      contactEmail: input.contactEmail?.trim().toLowerCase() || null,
+      contactMobile: mobile,
+      town: input.town?.trim() || null,
+      type: input.type,
+      isOndc: input.isOndc,
+      gstinRequired: input.gstinRequired ?? false,
+      status: "invited",
+    },
+  });
+  const user = await tx.partnerUser.create({
+    data: {
+      partnerId: partner.id,
+      name: input.user.name.trim(),
+      mobile,
+      email: input.user.email?.trim().toLowerCase() || null,
+      status: "invited",
+    },
+  });
+  const token = await createInvite(tx, user.id, input.createdBy);
+  return { partnerId: partner.id, partnerUserId: user.id, token };
+}
+
+/**
+ * Creates a partner, its first login and an invite. Returns the raw token —
+ * the ONLY time it exists outside the link; it is never stored.
+ */
+export async function createPartnerWithInvite(input: NewPartnerInput): Promise<NewPartner> {
   try {
-    return await prisma.$transaction(async (tx) => {
-      const partner = await tx.partner.create({
-        data: {
-          orgName: input.orgName.trim(),
-          contactEmail: input.contactEmail?.trim().toLowerCase() || null,
-          contactMobile: mobile,
-          town: input.town?.trim() || null,
-          type: input.type,
-          isOndc: input.isOndc,
-          gstinRequired: input.gstinRequired ?? false,
-          status: "invited",
-        },
-      });
-      const user = await tx.partnerUser.create({
-        data: {
-          partnerId: partner.id,
-          name: input.user.name.trim(),
-          mobile,
-          email: input.user.email?.trim().toLowerCase() || null,
-          status: "invited",
-        },
-      });
-      const token = await createInvite(tx, user.id, input.createdBy);
-      return { partnerId: partner.id, partnerUserId: user.id, token };
-    });
+    return await prisma.$transaction((tx) => insertPartnerWithInvite(tx, input));
   } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-      throw new PartnerAccountError("A user with that mobile number already exists.");
-    }
+    if (isUniqueViolation(err)) throw new PartnerAccountError(MOBILE_TAKEN);
     throw err;
   }
 }

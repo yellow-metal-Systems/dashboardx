@@ -5,11 +5,11 @@ import type { PartnerType } from "@prisma/client";
 
 import { requirePermissionOrThrow } from "@/lib/auth/session";
 import type { Permission } from "@/lib/auth/roles";
-import { LEADBRIDGE_URL } from "@/lib/env";
 import { ApiKeyError, createApiKey, revokeApiKey } from "./api-keys";
 import {
   ApplicationError,
-  approveApplication,
+  countersignAndApprove,
+  inviteUrl,
   parseRates,
   rejectApplication,
   resendAgreement,
@@ -28,11 +28,6 @@ import { RewardError, approveReward, markRewardPaid, rejectReward, revealPayoutD
 export type FormState = { error: string | null; inviteUrl?: string; inviteFor?: string };
 export type KeyFormState = { error: string | null; key?: string };
 export type RewardFormState = { error: string | null; ok?: boolean };
-
-/** The partner opens this on their phone in LeadBridge (the partner app). */
-function inviteUrl(token: string): string {
-  return `${LEADBRIDGE_URL.replace(/\/+$/, "")}/invite/${token}`;
-}
 
 const text = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 
@@ -181,13 +176,27 @@ export async function revealPayoutDetailsAction(_prev: RevealState, fd: FormData
 
 export type ApplicationFormState = { error: string | null; inviteUrl?: string; inviteFor?: string; ok?: boolean; message?: string };
 
-/** Approves a sign-up: creates the partner and returns their invite link, shown once like Add partner's. */
-export async function approveApplicationAction(_prev: ApplicationFormState, fd: FormData): Promise<ApplicationFormState> {
-  const staff = await requirePermissionOrThrow("partners.manage");
+/**
+ * Countersigns a signed agreement and approves the applicant: creates the partner
+ * and emails them the executed copy and their set-password link. The link is
+ * also returned, shown once like Add partner's, in case the email doesn't arrive.
+ */
+export async function countersignAndApproveAction(_prev: ApplicationFormState, fd: FormData): Promise<ApplicationFormState> {
+  const staff = await requirePermissionOrThrow("agreements.countersign");
   try {
-    const { token, name } = await approveApplication(text(fd, "applicationId"), staff.email);
+    const r = await countersignAndApprove(
+      text(fd, "applicationId"),
+      { confirmed: fd.get("confirmed") === "on", designation: text(fd, "designation") },
+      staff.email
+    );
     revalidatePath("/dashboard/partners", "layout");
-    return { error: null, inviteUrl: inviteUrl(token), inviteFor: name };
+    const message =
+      r.emailStatus === "LOGGED"
+        ? `Approved. The welcome email to ${r.email} is in Sent emails (demo mode).`
+        : r.emailStatus === "FAILED"
+          ? `Approved, but the welcome email to ${r.email} failed. Send them the link below.`
+          : `Approved. The signed agreement and set-password link were emailed to ${r.email}.`;
+    return { error: null, ok: true, message, inviteUrl: inviteUrl(r.token), inviteFor: r.name };
   } catch (err) {
     if (err instanceof ApplicationError) return { error: err.message };
     throw err;
