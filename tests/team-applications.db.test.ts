@@ -131,7 +131,7 @@ db("team, sign-ups and onboarding (database)", () => {
       await expect(rejectApplication(app.id, " ", "s")).rejects.toThrow(/reason/);
       await rejectApplication(app.id, "Outside our area", "s");
       expect((await prisma.partnerApplication.findUniqueOrThrow({ where: { id: app.id } })).rejectReason).toBe("Outside our area");
-      await expect(rejectApplication(app.id, "again", "s")).rejects.toThrow(/already reviewed/);
+      await expect(rejectApplication(app.id, "again", "s")).rejects.toThrow(/already approved or rejected/);
     });
   });
 

@@ -11,6 +11,7 @@ import { PARTNER_STATUS_BADGE_CLASSES, formatDate, formatDateTime } from "@/lib/
 import { listPartners } from "@/lib/partners/onboarding";
 import {
   APPLICATION_STATUSES,
+  APPLICATION_STATUS_LABELS,
   countPendingApplications,
   listApplications,
   type ApplicationStatus,
@@ -20,7 +21,7 @@ import { cn } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 const STATUS_LABEL: Record<string, string> = { invited: "Invited", active: "Active", disabled: "Turned off" };
-const APPLICATION_LABEL: Record<ApplicationStatus, string> = { PENDING: "Pending", APPROVED: "Approved", REJECTED: "Rejected" };
+const APPLICATION_LABEL = APPLICATION_STATUS_LABELS;
 
 function Tab({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
   return (
