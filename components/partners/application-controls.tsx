@@ -71,6 +71,11 @@ export function SendAgreementForm({ applicationId, inputs, defaults }: { applica
       <input type="hidden" name="applicationId" value={applicationId} />
       <RateFields inputs={inputs} values={defaults} />
       <p className="text-xs text-on-surface-variant">A blank rate prints as a blank line on the agreement. Check the preview before sending.</p>
+      {/* shortcut: the browser enforces this tick only; the server doesn't record it yet (see notes for Ayushman). */}
+      <label className="flex cursor-pointer items-start gap-2 text-sm text-on-surface">
+        <input type="checkbox" name="checksDone" required className="mt-0.5 size-4 shrink-0 accent-black" />
+        <span>I&apos;ve called the applicant and checked their details.</span>
+      </label>
       <Result state={state} />
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" variant="outline" onClick={preview}>
