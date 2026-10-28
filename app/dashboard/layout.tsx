@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { IntegrationHealthBanner } from "@/components/integration-health-banner";
+import { PreprodBanner } from "@/components/preprod-banner";
 import { staffAccess } from "@/lib/auth/session";
 import { countPendingApplications } from "@/lib/partners/applications";
 
@@ -27,6 +28,8 @@ export default async function DashboardLayout({
         pendingApplications={pendingApplications}
       />
       <SidebarInset>
+        {/* In the content column, not above it: the sidebar is fixed to the top edge and would cover it. */}
+        <PreprodBanner />
         {/* fetchIntegrationHealth was measured taking ~3s of every page's TTFB
             (its own 4s timeout ceiling) when awaited here directly. It's
             decorative — nothing else on the page depends on it — so it streams
