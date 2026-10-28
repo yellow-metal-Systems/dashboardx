@@ -115,6 +115,17 @@ db("partner agreement: send, resend, reject (database)", () => {
     expect(events.map((e) => [e.action, e.actor])).toEqual([["agreement_sent", ADMIN]]);
   });
 
+  it("records in the history whether staff confirmed they called the applicant", async () => {
+    const checked = await individual();
+    await sendAgreement(checked.id, BC_RATES, ADMIN, true);
+    const unchecked = await company();
+    await sendAgreement(unchecked.id, DSA_RATES, ADMIN);
+    const detail = async (applicationId: string) =>
+      (await prisma.partnerApplicationEvent.findFirstOrThrow({ where: { applicationId, action: "agreement_sent" } })).detail;
+    expect(await detail(checked.id)).toMatchObject({ checksDone: true });
+    expect(await detail(unchecked.id)).toMatchObject({ checksDone: false });
+  });
+
   it("sends a company the DSA agreement in the company's name", async () => {
     const app = await company();
     const res = await sendAgreement(app.id, DSA_RATES, ADMIN);

@@ -19,6 +19,11 @@ const vercelEnv = process.env.VERCEL_ENV?.trim();
 export const IS_PRODUCTION =
   vercelEnv === "production" || (!vercelEnv && process.env.NODE_ENV === "production");
 
+/** Pre-prod: dev code on the live database (plan of 27 Oct 2026, §2a). Read per call, so tests can switch it. */
+export function isPreprod(): boolean {
+  return process.env.PREPROD?.trim() === "true";
+}
+
 /**
  * The database. No fallback — this app has no mode in which it runs without one.
  */

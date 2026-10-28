@@ -107,6 +107,22 @@ db("partner agreement: countersign and approve (database)", () => {
     await expect(countersignAndApprove(app.id, OK, ADMIN)).rejects.toThrow(/already approved or rejected/);
   });
 
+  it("marks the partner as demo only on pre-prod (PREPROD=true)", async () => {
+    process.env.PREPROD = "true";
+    try {
+      const onPreprod = await individual("9845000002");
+      await signed(onPreprod);
+      const r = await countersignAndApprove(onPreprod.id, OK, ADMIN);
+      expect((await prisma.partner.findUniqueOrThrow({ where: { id: r.partnerId } })).isDemo).toBe(true);
+    } finally {
+      delete process.env.PREPROD;
+    }
+    const live = await company();
+    await signed(live);
+    const r = await countersignAndApprove(live.id, OK, ADMIN);
+    expect((await prisma.partner.findUniqueOrThrow({ where: { id: r.partnerId } })).isDemo).toBe(false);
+  });
+
   it("a company becomes an organisation in the company's name, with its email", async () => {
     const app = await company();
     await signed(app);
