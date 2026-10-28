@@ -90,7 +90,7 @@ export function ResendAgreementForm({ applicationId, inputs, current }: { applic
   return (
     <form action={resend} className="flex flex-col gap-3">
       <input type="hidden" name="applicationId" value={applicationId} />
-      <label className="flex items-center gap-2 text-sm text-on-surface">
+      <label className="flex cursor-pointer items-center gap-2 text-sm text-on-surface">
         <input type="checkbox" name="changeRates" checked={changeRates} onChange={(e) => setChangeRates(e.target.checked)} className="size-4 accent-black" />
         Change the payout rates
       </label>
@@ -156,7 +156,7 @@ export function CountersignPanel({ applicationId, staffName, done }: { applicati
         <span className="font-medium text-on-surface">Your designation (printed under your signature)</span>
         <Input name="designation" placeholder="Director" maxLength={100} className="max-w-xs" />
       </label>
-      <label className="flex items-start gap-2 text-sm text-on-surface">
+      <label className="flex cursor-pointer items-start gap-2 text-sm text-on-surface">
         <input type="checkbox" name="confirmed" required className="mt-0.5 size-4 shrink-0 accent-black" />
         <span>
           I countersign this agreement for Yellow Metal as <b>{staffName}</b>. This creates the partner and emails them the signed copy

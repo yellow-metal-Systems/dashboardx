@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { Check, ChevronLeft } from "lucide-react";
 
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +18,7 @@ import { requirePermission } from "@/lib/auth/session";
 import { emailMode } from "@/lib/email";
 import { formatDateTime } from "@/lib/leads";
 import { APPLICATION_STATUS_LABELS, defaultRates, getApplication, type ApplicationStatus } from "@/lib/partners/applications";
+import { cn } from "@/lib/utils";
 
 // One sign-up application (plan of 27 Oct 2026, B4): who applied, the agreement
 // (send → signed → countersigned), and its history. Anyone with partners.view
@@ -55,6 +56,60 @@ const rateText = (v: number | null | undefined, unit: "Rs" | "%") =>
 function storedRates(fields: unknown): Rates | null {
   const parsed = agreementFields.safeParse(fields);
   return parsed.success ? (parsed.data.rates as Rates) : null;
+}
+
+const STEPS: { status: ApplicationStatus; label: string }[] = [
+  { status: "PENDING", label: "Applied" },
+  { status: "AGREEMENT_SENT", label: "Agreement sent" },
+  { status: "SIGNED", label: "Signed" },
+  { status: "APPROVED", label: "Approved" },
+];
+
+/** Where the application is in the flow: done steps ticked, the current one dark, the rest outlined. */
+function Progress({ status }: { status: ApplicationStatus }) {
+  const current = STEPS.findIndex((s) => s.status === status);
+  return (
+    <ol aria-label="Progress" className="flex flex-wrap items-center gap-2 text-sm">
+      {STEPS.map((s, i) => {
+        const done = i < current || status === "APPROVED";
+        const here = i === current && !done;
+        return (
+          <li key={s.status} aria-current={here ? "step" : undefined} className="flex items-center gap-2">
+            {i > 0 && <span aria-hidden className={cn("h-px w-6 sm:w-10", i <= current ? "bg-black-solid" : "bg-outline-variant")} />}
+            <span
+              aria-hidden
+              className={cn(
+                "flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums",
+                done ? "bg-success-solid text-white" : here ? "bg-black-solid text-white" : "border border-outline-variant text-on-surface-variant"
+              )}
+            >
+              {done ? <Check className="size-3.5" strokeWidth={3} /> : i + 1}
+            </span>
+            <span className={done || here ? "font-medium text-on-surface" : "text-on-surface-variant"}>
+              {s.label}
+              {done && <span className="sr-only"> (done)</span>}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/** One PDF's view and download links on a line, labelled, so the two copies don't run together. */
+function PdfLinks({ label, href }: { label: string; href: string }) {
+  const download = `${href}${href.includes("?") ? "&" : "?"}download=1`;
+  return (
+    <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+      <span className="w-40 text-on-surface-variant">{label}</span>
+      <a href={href} target="_blank" rel="noopener" className="font-semibold text-link hover:underline">
+        View<span className="sr-only"> {label.toLowerCase()}</span>
+      </a>
+      <a href={download} className="font-semibold text-link hover:underline">
+        Download<span className="sr-only"> {label.toLowerCase()}</span>
+      </a>
+    </p>
+  );
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -103,6 +158,7 @@ export default async function ApplicationPage({ params }: { params: { id: string
           {app.applicantType === "COMPANY" ? "Company" : "Individual"} · applied {at(app.createdAt)}
         </span>
       </div>
+      {status !== "REJECTED" && <Progress status={status} />}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
@@ -211,23 +267,9 @@ export default async function ApplicationPage({ params }: { params: { id: string
             )}
 
             {canManage && agreement && (
-              <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
-                <a href={pdf} target="_blank" rel="noopener" className="font-semibold text-link hover:underline">
-                  View agreement as sent
-                </a>
-                <a href={`${pdf}?download=1`} className="font-semibold text-link hover:underline">
-                  Download
-                </a>
-                {agreement.status === "EXECUTED" && (
-                  <>
-                    <a href={`${pdf}?file=executed`} target="_blank" rel="noopener" className="font-semibold text-link hover:underline">
-                      View signed copy
-                    </a>
-                    <a href={`${pdf}?file=executed&download=1`} className="font-semibold text-link hover:underline">
-                      Download signed copy
-                    </a>
-                  </>
-                )}
+              <div className="flex flex-col gap-2 text-sm">
+                <PdfLinks label="Agreement as sent" href={pdf} />
+                {agreement.status === "EXECUTED" && <PdfLinks label="Signed copy" href={`${pdf}?file=executed`} />}
               </div>
             )}
 
