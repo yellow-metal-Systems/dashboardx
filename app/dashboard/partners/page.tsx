@@ -5,14 +5,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AddPartnerDialog } from "@/components/partners/add-partner-dialog";
-import { PendingApplications } from "@/components/partners/application-controls";
 import { requirePermission } from "@/lib/auth/session";
 import { PARTNER_STATUS_BADGE_CLASSES, formatDate, formatDateTime } from "@/lib/leads";
 import { listPartners } from "@/lib/partners/onboarding";
 import {
   APPLICATION_STATUSES,
   APPLICATION_STATUS_LABELS,
-  countPendingApplications,
+  countApplications,
   listApplications,
   type ApplicationStatus,
 } from "@/lib/partners/applications";
@@ -22,6 +21,13 @@ export const dynamic = "force-dynamic";
 
 const STATUS_LABEL: Record<string, string> = { invited: "Invited", active: "Active", disabled: "Turned off" };
 const APPLICATION_LABEL = APPLICATION_STATUS_LABELS;
+/** The column after "Applied", by tab: what the admin is waiting on, or who reviewed it. */
+const LAST_COLUMN: Partial<Record<ApplicationStatus, string>> = {
+  AGREEMENT_SENT: "Signing link",
+  SIGNED: "Signed",
+  APPROVED: "Reviewed",
+  REJECTED: "Reviewed",
+};
 
 function Tab({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
   return (
@@ -45,11 +51,14 @@ export default async function PartnersPage({ searchParams }: { searchParams: { t
     ? (searchParams.status as ApplicationStatus)
     : "PENDING";
 
-  const [partners, pendingCount, applications] = await Promise.all([
+  const [partners, counts, applications] = await Promise.all([
     onApplications ? null : listPartners(),
-    countPendingApplications(),
+    countApplications(),
     onApplications ? listApplications(appStatus) : null,
   ]);
+  // Waiting on an admin: new applications to send, and signed ones to countersign.
+  const pendingCount = counts.PENDING + counts.SIGNED;
+  const now = new Date();
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
@@ -81,64 +90,67 @@ export default async function PartnersPage({ searchParams }: { searchParams: { t
       {applications ? (
         <Card>
           <CardContent className="flex flex-col gap-4 pt-6 md:pt-9">
-            <div className="flex flex-wrap gap-3 text-sm">
+            <nav aria-label="Application status" className="flex flex-wrap gap-1">
               {APPLICATION_STATUSES.map((s) => (
-                <Link
-                  key={s}
-                  href={`/dashboard/partners?tab=applications&status=${s}`}
-                  aria-current={s === appStatus ? "page" : undefined}
-                  className={cn(
-                    "underline-offset-4 hover:underline",
-                    s === appStatus ? "font-bold text-on-surface underline" : "text-on-surface-variant"
-                  )}
-                >
+                <Tab key={s} href={`/dashboard/partners?tab=applications&status=${s}`} active={s === appStatus}>
                   {APPLICATION_LABEL[s]}
-                </Link>
+                  <span className="font-normal tabular-nums text-on-surface-variant">{counts[s]}</span>
+                </Tab>
               ))}
-            </div>
+            </nav>
 
-            {appStatus === "PENDING" ? (
-              <PendingApplications
-                rows={applications.map((a) => ({
-                  id: a.id,
-                  name: a.name,
-                  mobile: a.mobile,
-                  town: a.town,
-                  createdAt: a.createdAt.toISOString(),
-                }))}
-              />
-            ) : applications.length === 0 ? (
+            {applications.length === 0 ? (
               <p className="py-10 text-center text-sm text-on-surface-variant">
-                No {APPLICATION_LABEL[appStatus].toLowerCase()} applications yet.
+                {appStatus === "PENDING"
+                  ? "No applications waiting. New partners apply on LeadBridge's /join page."
+                  : `No ${APPLICATION_LABEL[appStatus].toLowerCase()} applications.`}
               </p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow className="[&>th]:whitespace-nowrap">
                     <TableHead>Applicant</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Town</TableHead>
                     <TableHead>Applied</TableHead>
-                    <TableHead>Reviewed</TableHead>
+                    {LAST_COLUMN[appStatus] && <TableHead>{LAST_COLUMN[appStatus]}</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {applications.map((a) => (
-                    <TableRow key={a.id}>
+                    <TableRow key={a.id} className="relative">
                       <TableCell className="font-medium text-on-surface">
-                        {a.partnerId ? (
-                          <Link href={`/dashboard/partners/${a.partnerId}`} className="hover:underline">{a.name}</Link>
-                        ) : (
-                          a.name
-                        )}
-                        <span className="block text-xs font-normal text-on-surface-variant">{a.mobile}</span>
+                        {/* The whole row opens the application, where every action lives. */}
+                        <Link href={`/dashboard/partners/applications/${a.id}`} className="after:absolute after:inset-0 hover:underline">
+                          {a.companyName ?? a.name}
+                        </Link>
+                        <span className="block text-xs font-normal text-on-surface-variant">
+                          {a.companyName ? `${a.name} · ` : ""}
+                          {a.mobile}
+                        </span>
                       </TableCell>
+                      <TableCell className="whitespace-nowrap">{a.applicantType === "COMPANY" ? "Company · DSA" : "Individual · BC"}</TableCell>
                       <TableCell>{a.town}</TableCell>
                       <TableCell className="whitespace-nowrap">{formatDateTime(a.createdAt.toISOString())}</TableCell>
-                      <TableCell className="text-sm">
-                        {a.reviewedAt && formatDate(a.reviewedAt.toISOString())}
-                        {a.reviewedBy && <span className="text-on-surface-variant"> by {a.reviewedBy}</span>}
-                        {a.rejectReason && <span className="block text-xs text-on-surface-variant">“{a.rejectReason}”</span>}
-                      </TableCell>
+                      {appStatus === "AGREEMENT_SENT" && (
+                        <TableCell className="whitespace-nowrap">
+                          {a.linkExpiresAt && a.linkExpiresAt <= now ? (
+                            <Badge variant="destructive">Expired</Badge>
+                          ) : (
+                            a.linkExpiresAt && `Until ${formatDate(a.linkExpiresAt.toISOString())}`
+                          )}
+                        </TableCell>
+                      )}
+                      {appStatus === "SIGNED" && (
+                        <TableCell className="whitespace-nowrap">{a.signedAt && formatDateTime(a.signedAt.toISOString())}</TableCell>
+                      )}
+                      {(appStatus === "APPROVED" || appStatus === "REJECTED") && (
+                        <TableCell className="text-sm">
+                          {a.reviewedAt && formatDate(a.reviewedAt.toISOString())}
+                          {a.reviewedBy && <span className="text-on-surface-variant"> by {a.reviewedBy}</span>}
+                          {a.rejectReason && <span className="block text-xs text-on-surface-variant">“{a.rejectReason}”</span>}
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>

@@ -70,6 +70,21 @@ export const BLANK_RATES = {
   BC: { perVerifiedApplicationRs: null, disbursedPercent: null, perActiveLoanMonthlyRs: null, collectedPercent: null } satisfies BcRates,
 };
 
+/** The payout-rate inputs of each template, in the order the agreement lists them (Annexure A / Schedule B). */
+export const RATE_INPUTS: Record<AgreementTemplate, { name: string; label: string; unit: "Rs" | "%" }[]> = {
+  DSA: [
+    { name: "perQualifiedLeadRs", label: "Per qualified lead", unit: "Rs" },
+    { name: "disbursedPercent", label: "On disbursal: % of disbursed amount", unit: "%" },
+    { name: "disbursedFlatRs", label: "Or on disbursal: flat amount", unit: "Rs" },
+  ],
+  BC: [
+    { name: "perVerifiedApplicationRs", label: "Per verified application", unit: "Rs" },
+    { name: "disbursedPercent", label: "% of disbursed loan value", unit: "%" },
+    { name: "perActiveLoanMonthlyRs", label: "Per active loan, per month", unit: "Rs" },
+    { name: "collectedPercent", label: "% of collected amount", unit: "%" },
+  ],
+};
+
 /** A signature block once signed: the name as typed (or the countersigner's), and when. */
 export type Signature = { name: string; at: Date; designation?: string | null };
 
