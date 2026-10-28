@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
 import { EmailStatus } from "@/components/email-status";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,6 +17,8 @@ export const dynamic = "force-dynamic";
 export default async function EmailsPage() {
   await requirePermission("partners.manage");
   const { mode, emails } = await listEmails();
+  // Demo mailbox only (plan B5): once emails really go out, failures show on each application's history instead.
+  if (mode !== "log") notFound();
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
@@ -25,9 +28,7 @@ export default async function EmailsPage() {
       <div>
         <h1 className="text-heading-lg text-on-surface">Sent emails</h1>
         <p className="mt-1 max-w-2xl text-sm text-on-surface-variant">
-          {mode === "log"
-            ? "Demo mode: emails are saved here instead of being sent. Open one to read it and follow its links."
-            : "Emails sent through Resend. Their text isn't stored, so only the details show here."}
+          Demo mode: emails are saved here instead of being sent. Open one to read it and follow its links.
           {emails.length === 100 && " Showing the latest 100."}
         </p>
       </div>

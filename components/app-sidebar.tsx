@@ -40,11 +40,15 @@ type Props = {
   permissions: Permission[];
   /** Applications waiting on an admin (new + signed), shown on Partners. */
   pendingApplications: number;
+  /** Sent emails is the demo mailbox: only while emails are logged, not sent (EMAIL_MODE=log). */
+  showSentEmails: boolean;
 };
 
-export function AppSidebar({ staffName, staffEmail, role, permissions, pendingApplications }: Props) {
+export function AppSidebar({ staffName, staffEmail, role, permissions, pendingApplications, showSentEmails }: Props) {
   const pathname = usePathname();
-  const items = NAV_ITEMS.filter((item) => permissions.includes(item.permission));
+  const items = NAV_ITEMS.filter(
+    (item) => permissions.includes(item.permission) && (item.href !== "/dashboard/emails" || showSentEmails)
+  );
 
   // Longest match wins, so /dashboard/leads/lms-review lights "LMS review", not "Leads".
   const matchLength = (item: (typeof NAV_ITEMS)[number]) =>

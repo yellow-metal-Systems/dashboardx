@@ -5,6 +5,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { IntegrationHealthBanner } from "@/components/integration-health-banner";
 import { PreprodBanner } from "@/components/preprod-banner";
 import { staffAccess } from "@/lib/auth/session";
+import { emailMode } from "@/lib/email";
 import { countPendingApplications } from "@/lib/partners/applications";
 
 export default async function DashboardLayout({
@@ -26,6 +27,7 @@ export default async function DashboardLayout({
         role={staff.role}
         permissions={staff.permissions}
         pendingApplications={pendingApplications}
+        showSentEmails={emailMode() === "log"}
       />
       <SidebarInset>
         {/* In the content column, not above it: the sidebar is fixed to the top edge and would cover it. */}

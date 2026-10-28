@@ -4,7 +4,10 @@ import { useRef, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   countersignAndApproveAction,
   rejectApplicationAction,
@@ -71,7 +74,7 @@ export function SendAgreementForm({ applicationId, inputs, defaults }: { applica
       <input type="hidden" name="applicationId" value={applicationId} />
       <RateFields inputs={inputs} values={defaults} />
       <p className="text-xs text-on-surface-variant">A blank rate prints as a blank line on the agreement. Check the preview before sending.</p>
-      {/* shortcut: the browser enforces this tick only; the server doesn't record it yet (see notes for Ayushman). */}
+      {/* Required here and by sendAgreementAction, which records it in the history. */}
       <label className="flex cursor-pointer items-start gap-2 text-sm text-on-surface">
         <input type="checkbox" name="checksDone" required className="mt-0.5 size-4 shrink-0 accent-black" />
         <span>I&apos;ve called the applicant and checked their details.</span>
@@ -111,26 +114,42 @@ export function ResendAgreementForm({ applicationId, inputs, current }: { applic
 
 /** Reject asks for a reason first; the server requires one and emails it to the applicant. */
 export function RejectApplication({ applicationId, name }: { applicationId: string; name: string }) {
-  const [state, reject] = useFormState(rejectApplicationAction, INITIAL);
   const [open, setOpen] = useState(false);
-  if (!open) {
-    return (
-      <Button type="button" size="sm" variant="outline" onClick={() => setOpen(true)} className="self-start">
-        Reject application
-      </Button>
-    );
-  }
   return (
-    <form action={reject} className="flex flex-col gap-2">
-      <input type="hidden" name="applicationId" value={applicationId} />
-      <div className="flex flex-wrap items-center gap-2">
-        <Input name="reason" aria-label={`Reason for rejecting ${name}`} placeholder="Reason (emailed to the applicant)" required autoFocus maxLength={300} className="h-8 w-72 max-w-full" />
-        <Submit idle="Reject" busy="Rejecting…" variant="destructive" />
-        <Button type="button" size="sm" variant="outline" onClick={() => setOpen(false)}>
-          Cancel
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button type="button" size="sm" variant="outline" className="self-start">
+          Reject application
         </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Reject {name}?</DialogTitle>
+          <DialogDescription>We email them the reason, and any signing link stops working. This can&apos;t be undone.</DialogDescription>
+        </DialogHeader>
+        {/* Remounted on each open, so an old error or reason doesn't linger. On success the page re-renders without this control. */}
+        {open && <RejectForm applicationId={applicationId} onCancel={() => setOpen(false)} />}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RejectForm({ applicationId, onCancel }: { applicationId: string; onCancel: () => void }) {
+  const [state, reject] = useFormState(rejectApplicationAction, INITIAL);
+  return (
+    <form action={reject} className="flex flex-col gap-3">
+      <input type="hidden" name="applicationId" value={applicationId} />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="reject-reason">Reason</Label>
+        <Textarea id="reject-reason" name="reason" required autoFocus maxLength={300} rows={3} placeholder="For example: outside our service area" />
       </div>
       <Result state={state} />
+      <div className="flex justify-end gap-2">
+        <Button type="button" size="sm" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Submit idle="Reject application" busy="Rejecting…" variant="destructive" />
+      </div>
     </form>
   );
 }

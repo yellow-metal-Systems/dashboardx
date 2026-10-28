@@ -34,10 +34,11 @@ const NO_BODY: Record<string, string> = {
 
 export default async function EmailPage({ params }: { params: { id: string } }) {
   await requirePermission("partners.manage");
+  // Demo mailbox only (plan B5). Once real email is on, old demo bodies hold live links nobody should reuse.
+  if (emailMode() !== "log") notFound();
   const email = await getEmail(params.id);
   if (!email) notFound();
-  // Only in demo mode: once real email is on, old demo bodies hold live links nobody should reuse.
-  const body = emailMode() === "log" ? email.bodyHtml : null;
+  const body = email.bodyHtml;
   const links = body ? linksIn(body) : [];
 
   return (
@@ -92,7 +93,7 @@ export default async function EmailPage({ params }: { params: { id: string } }) 
         </div>
       ) : (
         <p className="text-sm text-on-surface-variant">
-          {NO_BODY[email.status] ?? "Its text isn't shown: emails are now really sent, so saved demo copies are hidden."}
+          {NO_BODY[email.status] ?? "This email's text wasn't saved."}
         </p>
       )}
     </div>
