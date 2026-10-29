@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Rewards statement" };
+
 const PAD = "p-5 md:p-6";
 const monthName = (d: Date) => new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric", timeZone: "UTC" }).format(d);
 const iso = (d: Date) => d.toISOString();

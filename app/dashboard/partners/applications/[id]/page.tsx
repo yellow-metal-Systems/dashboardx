@@ -26,6 +26,8 @@ import { cn } from "@/lib/utils";
 // countersigning needs agreements.countersign (admins).
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Partner application" };
+
 const STATUS_BADGE: Record<ApplicationStatus, BadgeProps["variant"]> = {
   PENDING: "pending",
   AGREEMENT_SENT: "grey",

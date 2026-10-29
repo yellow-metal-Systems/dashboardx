@@ -17,6 +17,8 @@ import { formatDateTime } from "@/lib/leads";
 // access to LeadDesk; links open in a new tab.
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Email" };
+
 /** The http(s) links in an email body, in order, without repeats. esc() writes &amp; &quot; &#39; into hrefs. */
 function linksIn(html: string): string[] {
   const unescape = (s: string) => s.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");

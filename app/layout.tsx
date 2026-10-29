@@ -10,7 +10,8 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "YellowMetal LeadDesk",
+  // Each page sets its own title, e.g. "Leads — YellowMetal LeadDesk".
+  title: { default: "YellowMetal LeadDesk", template: "%s — YellowMetal LeadDesk" },
   description: "Lead-generation platform for YellowMetal partner organizations.",
 };
 

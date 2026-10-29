@@ -13,6 +13,8 @@ import { integrationStatus } from "@/lib/settings/integrations";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Settings" };
+
 // Settings: every member sees My account; the other sections follow permissions,
 // so nobody is shown a section they could not act on.
 

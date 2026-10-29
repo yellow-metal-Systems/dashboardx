@@ -10,7 +10,7 @@ import { findInvite } from "@/lib/team/team";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Join — YellowMetal LeadDesk",
+  title: "Join",
 };
 
 // Public on purpose: the middleware only guards /dashboard, and the token is the credential.

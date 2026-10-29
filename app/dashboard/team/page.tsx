@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Team" };
+
 export default async function TeamPage() {
   const access = await requirePermission("team.manage");
   const { members, invites } = await listTeam();

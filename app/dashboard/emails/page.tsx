@@ -14,6 +14,8 @@ import { formatDateTime } from "@/lib/leads";
 // open an email to read it and follow its links. Admins only (partners.manage).
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Sent emails" };
+
 export default async function EmailsPage() {
   await requirePermission("partners.manage");
   const { mode, emails } = await listEmails();

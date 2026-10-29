@@ -10,6 +10,8 @@ import { requirePermission } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Overview" };
+
 const STATUS_BAR_CLASSES: Record<LeadStatus, string> = {
   LEAD_CREATED: "bg-grey-solid",
   CONTACTED: "bg-grey-solid",

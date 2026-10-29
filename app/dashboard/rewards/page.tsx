@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Rewards" };
+
 // Even padding on every side. CardContent's default drops the top padding
 // because it expects a CardHeader above it; these cards have none.
 const PAD = "p-5 md:p-6";

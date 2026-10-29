@@ -11,6 +11,8 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "LMS updates to match" };
+
 const EVENT_LABEL = { DISBURSED: "Disbursed", REJECTED: "Rejected", CANCELLED: "Cancelled" } as const;
 
 // LMS updates no lead could be matched to: no YMLEAD number on the loan, and no

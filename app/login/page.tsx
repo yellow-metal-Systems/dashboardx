@@ -8,7 +8,7 @@ import { PreprodBanner } from "@/components/preprod-banner";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Sign in — YellowMetal LeadDesk",
+  title: "Sign in",
 };
 
 export default async function LoginPage({

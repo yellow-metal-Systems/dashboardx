@@ -25,6 +25,8 @@ import { staffAccess } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Lead" };
+
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 className="text-label-sm uppercase tracking-widest text-label">{children}</h2>;
 }

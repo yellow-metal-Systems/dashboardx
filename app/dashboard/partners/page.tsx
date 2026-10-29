@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Partners" };
+
 const STATUS_LABEL: Record<string, string> = { invited: "Invited", active: "Active", disabled: "Turned off" };
 const APPLICATION_LABEL = APPLICATION_STATUS_LABELS;
 /** The column after "Applied", by tab: what the admin is waiting on, or who reviewed it. */

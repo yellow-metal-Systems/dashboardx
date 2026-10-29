@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Partner" };
+
 const STATUS_LABEL: Record<string, string> = { invited: "Invited", active: "Active", disabled: "Turned off" };
 
 export default async function PartnerPage({ params }: { params: { id: string } }) {
