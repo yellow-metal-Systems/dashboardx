@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Rewards statement" };
 
-const PAD = "p-5 md:p-6";
+const PAD = "p-6 md:p-9";
 const monthName = (d: Date) => new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric", timeZone: "UTC" }).format(d);
 const iso = (d: Date) => d.toISOString();
 
@@ -108,7 +108,7 @@ export default async function PartnerRewardsPage({ params }: { params: { partner
         <CardContent className={cn("flex flex-col gap-4", PAD)}>
           <h2 className="text-heading-sm text-on-surface">Leads from {partner.orgName}</h2>
           {leads.length === 0 ? (
-            <p className="text-sm text-on-surface-variant">No leads yet.</p>
+            <p className="py-10 text-center text-sm text-on-surface-variant">No leads yet.</p>
           ) : (
             <Table>
               <TableHeader>

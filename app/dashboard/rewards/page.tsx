@@ -17,7 +17,7 @@ export const metadata = { title: "Rewards" };
 
 // Even padding on every side. CardContent's default drops the top padding
 // because it expects a CardHeader above it; these cards have none.
-const PAD = "p-5 md:p-6";
+const PAD = "p-6 md:p-9";
 
 function CountCell({ count, amount }: { count: number; amount?: number }) {
   if (count === 0) return <span className="text-on-surface-variant">—</span>;

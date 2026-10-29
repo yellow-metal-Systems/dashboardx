@@ -55,7 +55,7 @@ export default async function LmsReviewPage() {
       ) : (
         events.map((e) => (
           <Card key={e.id} data-lms-event={e.eventId}>
-            <CardContent className="flex flex-col gap-3 p-5 md:p-6">
+            <CardContent className="flex flex-col gap-3 p-6 md:p-9">
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <Badge variant={e.event === "DISBURSED" ? "success" : "destructive"}>{EVENT_LABEL[e.event]}</Badge>
                 <Badge variant="grey">{e.outcome === "AMBIGUOUS" ? "Several leads match" : "No lead found"}</Badge>
