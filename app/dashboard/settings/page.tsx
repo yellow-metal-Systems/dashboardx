@@ -127,7 +127,7 @@ export default async function SettingsPage() {
               <div className="mb-3 flex items-center justify-between gap-2">
                 <h2 className="text-sm font-bold text-on-surface">AarthikLabs (ONDC)</h2>
                 {!status.aarthik ? (
-                  <Badge variant="grey">Can't check</Badge>
+                  <Badge variant="grey">Can&apos;t check</Badge>
                 ) : status.aarthik.healthy ? (
                   <Badge variant="success">Working</Badge>
                 ) : (
@@ -141,7 +141,7 @@ export default async function SettingsPage() {
                   <Row label="Failed">{status.aarthik.webhooksFailed}</Row>
                 </dl>
               ) : (
-                <p className="text-sm text-on-surface-variant">The server didn't answer. Status changes still queue up and go out once it's back.</p>
+                <p className="text-sm text-on-surface-variant">The server didn&apos;t answer. Status changes still queue up and go out once it&apos;s back.</p>
               )}
             </section>
 
@@ -157,7 +157,7 @@ export default async function SettingsPage() {
                 <Row label="Last request">{when(status.apiKeys.lastUsedAt)}</Row>
               </dl>
               <p className="mt-3 text-xs text-on-surface-variant">
-                Keys are issued and revoked on each partner's page in{" "}
+                Keys are issued and revoked on each partner&apos;s page in{" "}
                 <Link href="/dashboard/partners" className="text-link hover:underline">Partners</Link>.
               </p>
             </section>

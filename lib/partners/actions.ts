@@ -5,9 +5,20 @@ import type { PartnerType } from "@prisma/client";
 
 import { requirePermissionOrThrow } from "@/lib/auth/session";
 import type { Permission } from "@/lib/auth/roles";
-import { LEADBRIDGE_URL } from "@/lib/env";
 import { ApiKeyError, createApiKey, revokeApiKey } from "./api-keys";
-import { ApplicationError, approveApplication, rejectApplication } from "./applications";
+import {
+  ApplicationError,
+  countersignAndApprove,
+  inviteUrl,
+  RATE_FIELDS,
+  parseRates,
+  rejectApplication,
+  resendAgreement,
+  sendAgreement,
+  type SentAgreement,
+} from "./applications";
+import { templateFor } from "@/lib/agreements/fields";
+import { prisma } from "@/lib/prisma";
 import { AdminError, PartnerAccountError, onboardPartner, resendInvite, setGstinRequired, setPartnerEnabled } from "./onboarding";
 import { RewardError, approveReward, markRewardPaid, rejectReward, revealPayoutDetails, setRewardRules } from "./rewards";
 
@@ -18,11 +29,6 @@ import { RewardError, approveReward, markRewardPaid, rejectReward, revealPayoutD
 export type FormState = { error: string | null; inviteUrl?: string; inviteFor?: string };
 export type KeyFormState = { error: string | null; key?: string };
 export type RewardFormState = { error: string | null; ok?: boolean };
-
-/** The partner opens this on their phone in LeadBridge (the partner app). */
-function inviteUrl(token: string): string {
-  return `${LEADBRIDGE_URL.replace(/\/+$/, "")}/invite/${token}`;
-}
 
 const text = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 
@@ -169,15 +175,29 @@ export async function revealPayoutDetailsAction(_prev: RevealState, fd: FormData
 
 // --- self-service sign-ups (partners.manage) -------------------------------------
 
-export type ApplicationFormState = { error: string | null; inviteUrl?: string; inviteFor?: string; ok?: boolean };
+export type ApplicationFormState = { error: string | null; inviteUrl?: string; inviteFor?: string; ok?: boolean; message?: string };
 
-/** Approves a sign-up: creates the partner and returns their invite link, shown once like Add partner's. */
-export async function approveApplicationAction(_prev: ApplicationFormState, fd: FormData): Promise<ApplicationFormState> {
-  const staff = await requirePermissionOrThrow("partners.manage");
+/**
+ * Countersigns a signed agreement and approves the applicant: creates the partner
+ * and emails them the executed copy and their set-password link. The link is
+ * also returned, shown once like Add partner's, in case the email doesn't arrive.
+ */
+export async function countersignAndApproveAction(_prev: ApplicationFormState, fd: FormData): Promise<ApplicationFormState> {
+  const staff = await requirePermissionOrThrow("agreements.countersign");
   try {
-    const { token, name } = await approveApplication(text(fd, "applicationId"), staff.email);
+    const r = await countersignAndApprove(
+      text(fd, "applicationId"),
+      { confirmed: fd.get("confirmed") === "on", designation: text(fd, "designation") },
+      staff.email
+    );
     revalidatePath("/dashboard/partners", "layout");
-    return { error: null, inviteUrl: inviteUrl(token), inviteFor: name };
+    const message =
+      r.emailStatus === "LOGGED"
+        ? `Approved. The welcome email to ${r.email} is in Sent emails (demo mode).`
+        : r.emailStatus === "FAILED"
+          ? `Approved, but the welcome email to ${r.email} failed. Send them the link below.`
+          : `Approved. The signed agreement and set-password link were emailed to ${r.email}.`;
+    return { error: null, ok: true, message, inviteUrl: inviteUrl(r.token), inviteFor: r.name };
   } catch (err) {
     if (err instanceof ApplicationError) return { error: err.message };
     throw err;
@@ -190,6 +210,51 @@ export async function rejectApplicationAction(_prev: ApplicationFormState, fd: F
     await rejectApplication(text(fd, "applicationId"), text(fd, "reason"), staff.email);
     revalidatePath("/dashboard/partners", "layout");
     return { error: null, ok: true };
+  } catch (err) {
+    if (err instanceof ApplicationError) return { error: err.message };
+    throw err;
+  }
+}
+
+// --- the partner agreement (partners.manage) -----------------------------------
+
+/** The form's payout-rate fields for this application's agreement (BC or DSA). */
+async function ratesFrom(fd: FormData, applicationId: string) {
+  const app = await prisma.partnerApplication.findUnique({ where: { id: applicationId }, select: { applicantType: true } });
+  if (!app) throw new ApplicationError("Application not found.");
+  return parseRates(templateFor(app.applicantType), Object.fromEntries(RATE_FIELDS.map((k) => [k, text(fd, k)])));
+}
+
+function sentMessage(r: SentAgreement, resent: boolean): string {
+  const what = resent ? "A new signing link" : "The agreement";
+  if (r.emailStatus === "LOGGED") return `${what} is ready for ${r.email}. Demo mode: open it from Sent emails.`;
+  if (r.emailStatus === "FAILED") return `${what} was created, but the email to ${r.email} failed. Resend it to try again.`;
+  return `${what} was emailed to ${r.email}.`;
+}
+
+/** Sends the BC or DSA agreement with the payout rates entered on the form. */
+export async function sendAgreementAction(_prev: ApplicationFormState, fd: FormData): Promise<ApplicationFormState> {
+  const staff = await requirePermissionOrThrow("partners.manage");
+  const applicationId = text(fd, "applicationId");
+  try {
+    const sent = await sendAgreement(applicationId, await ratesFrom(fd, applicationId), staff.email);
+    revalidatePath("/dashboard/partners", "layout");
+    return { error: null, ok: true, message: sentMessage(sent, false) };
+  } catch (err) {
+    if (err instanceof ApplicationError) return { error: err.message };
+    throw err;
+  }
+}
+
+/** A new signing link; the old one stops working. Rates change only if the form sends them. */
+export async function resendAgreementAction(_prev: ApplicationFormState, fd: FormData): Promise<ApplicationFormState> {
+  const staff = await requirePermissionOrThrow("partners.manage");
+  const applicationId = text(fd, "applicationId");
+  try {
+    const newRates = fd.get("changeRates") === "on" ? await ratesFrom(fd, applicationId) : undefined;
+    const sent = await resendAgreement(applicationId, staff.email, newRates);
+    revalidatePath("/dashboard/partners", "layout");
+    return { error: null, ok: true, message: sentMessage(sent, true) };
   } catch (err) {
     if (err instanceof ApplicationError) return { error: err.message };
     throw err;

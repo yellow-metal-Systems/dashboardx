@@ -162,3 +162,13 @@ export async function requirePermissionOrThrow(permission: Permission): Promise<
   if (!can(await roleOf(staff), permission)) throw new Error("Your role does not allow this.");
   return staff;
 }
+
+/**
+ * For route handlers (a PDF download): the signed-in member if their live role
+ * has the permission, else null, and the handler answers a plain 404.
+ */
+export async function staffWithPermission(permission: Permission): Promise<SignedInStaff | null> {
+  const staff = await currentStaff();
+  if (!staff || !can(await roleOf(staff), permission)) return null;
+  return staff;
+}

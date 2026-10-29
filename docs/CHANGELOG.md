@@ -3,6 +3,24 @@
 Scoped to this repo (`dashboardx` / LeadDesk) only. The AarthikLabs-facing service's
 history lives in the `serverx` repo's own `CHANGELOG.md`.
 
+## 2026-10-28 — partner agreements (server side)
+
+Follows serverx migration `12_partner_agreements`, which must be applied first
+(applied to Supabase on 27 Oct). See `docs/PARTNER_ONBOARDING.md`.
+
+- The DSA (companies) and BC (individuals) agreements as versioned templates,
+  rendered to PDF with pdfmake and stored in `agreement_files` with their SHA-256.
+- Send, resend and reject an application's agreement; countersign and approve a
+  signed one, which creates the partner and emails the executed PDF and the
+  set-password link. The old Approve (no agreement) is removed.
+- New permission `agreements.countersign` (admins).
+- Staff PDF routes: the agreement as sent, the executed copy, and a preview.
+- Email in log mode (shown on a Sent emails page) or through Resend.
+- `npm run onboarding:demo -- seed | clean [--yes]` for TEST demo rows.
+- The screens for these come separately (Atharva, B3–B5).
+- New env: `COMPANY_LEGAL_NAME`, `COMPANY_REGISTERED_OFFICE` (required in
+  production), `AGREEMENT_LINK_TTL_DAYS`, `EMAIL_MODE`, `RESEND_API_KEY`, `EMAIL_FROM`.
+
 ## 2026-10-06 — ONDC recon fields and provisional offer
 
 Follows serverx migration `2_ondc_recon_and_offer`, which must be applied first.

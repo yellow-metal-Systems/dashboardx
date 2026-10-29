@@ -324,13 +324,14 @@ model StaffInvite {
   @@map("staff_invites")
 }
 
-/// An individual's self-service sign-up from LeadBridge, waiting for staff.
+/// A self-service sign-up from LeadBridge by an individual or a company, waiting for staff.
 model PartnerApplication {
   id            String    @id @default(cuid())
+  /// The person: the individual, or a company's contact person.
   name          String
   mobile        String    @map("mobile_number")
   town          String
-  /// PENDING | APPROVED | REJECTED
+  /// PENDING | AGREEMENT_SENT | SIGNED | APPROVED | REJECTED
   status        String    @default("PENDING")
   reviewedBy    String?   @map("reviewed_by")
   reviewedAt    DateTime? @map("reviewed_at") @db.Timestamptz(3)
@@ -338,10 +339,114 @@ model PartnerApplication {
   partnerId     String?   @map("partner_id")
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  /// INDIVIDUAL | COMPANY
+  applicantType String    @default("INDIVIDUAL") @map("applicant_type")
+  /// Required by the sign-up form since migration 12; null on older rows.
+  email         String?
+  /// Residential address (individual) or registered office (company).
+  address       String?
+  /// Individuals only. Never Aadhaar.
+  pan           String?
+  companyName   String?   @map("company_name")
+  gstin         String?
+
+  agreements PartnerAgreement[]
+  events     PartnerApplicationEvent[]
 
   @@index([status, createdAt])
   @@index([mobile])
+  @@index([email])
   @@map("partner_applications")
+}
+
+/// The agreement sent to an applicant for signing (serverx migration 12). At most
+/// one per application is not VOID. Only the signing token's SHA-256 is stored.
+model PartnerAgreement {
+  id                String    @id @default(cuid())
+  applicationId     String    @map("application_id")
+  /// DSA | BC
+  template          String
+  templateVersion   String    @map("template_version")
+  fields            Json
+  unsignedFileId    String    @map("unsigned_file_id")
+  unsignedSha256    String    @map("unsigned_sha256")
+  tokenHash         String    @unique @map("token_hash")
+  tokenExpiresAt    DateTime  @map("token_expires_at") @db.Timestamptz(3)
+  /// SENT | SIGNED | EXECUTED | VOID
+  status            String    @default("SENT")
+  sentBy            String    @map("sent_by")
+  sentAt            DateTime  @default(now()) @map("sent_at") @db.Timestamptz(3)
+  signerTypedName   String?   @map("signer_typed_name")
+  signedAt          DateTime? @map("signed_at") @db.Timestamptz(3)
+  signerIp          String?   @map("signer_ip")
+  signerUserAgent   String?   @map("signer_user_agent")
+  countersignedBy   String?   @map("countersigned_by")
+  countersignerName String?   @map("countersigner_name")
+  countersignedAt   DateTime? @map("countersigned_at") @db.Timestamptz(3)
+  executedFileId    String?   @map("executed_file_id")
+  executedSha256    String?   @map("executed_sha256")
+  voidedAt          DateTime? @map("voided_at") @db.Timestamptz(3)
+  /// resent | rejected
+  voidReason        String?   @map("void_reason")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  application  PartnerApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  unsignedFile AgreementFile      @relation("AgreementUnsignedFile", fields: [unsignedFileId], references: [id], onDelete: Restrict)
+  executedFile AgreementFile?     @relation("AgreementExecutedFile", fields: [executedFileId], references: [id], onDelete: Restrict)
+
+  @@index([applicationId])
+  @@map("partner_agreements")
+}
+
+/// The bytes of a generated agreement PDF.
+model AgreementFile {
+  id          String   @id @default(cuid())
+  sha256      String
+  contentType String   @default("application/pdf") @map("content_type")
+  sizeBytes   Int      @map("size_bytes")
+  bytes       Bytes
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  unsignedFor PartnerAgreement[] @relation("AgreementUnsignedFile")
+  executedFor PartnerAgreement[] @relation("AgreementExecutedFile")
+
+  @@map("agreement_files")
+}
+
+/// Every email sent or, in log mode, only recorded. bodyHtml is kept in log mode alone.
+model EmailMessage {
+  id                String    @id @default(cuid())
+  toAddress         String    @map("to_address")
+  template          String
+  subject           String
+  applicationId     String?   @map("application_id")
+  /// LOGGED | SENT | FAILED
+  status            String
+  providerMessageId String?   @map("provider_message_id")
+  error             String?
+  bodyHtml          String?   @map("body_html")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  sentAt            DateTime? @map("sent_at") @db.Timestamptz(3)
+
+  @@index([createdAt])
+  @@index([applicationId])
+  @@map("email_messages")
+}
+
+/// One line of an application's history. actor is a staff email, "applicant" or "system".
+model PartnerApplicationEvent {
+  id            String   @id @default(cuid())
+  applicationId String   @map("application_id")
+  action        String
+  actor         String
+  detail        Json?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  application PartnerApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, createdAt])
+  @@map("partner_application_events")
 }
 
 // -----------------------------------------------------------------------------

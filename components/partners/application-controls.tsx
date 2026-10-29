@@ -6,7 +6,7 @@ import { useFormState, useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { approveApplicationAction, rejectApplicationAction, type ApplicationFormState } from "@/lib/partners/actions";
+import { countersignAndApproveAction, rejectApplicationAction, type ApplicationFormState } from "@/lib/partners/actions";
 import { formatDateTime } from "@/lib/leads";
 import { CopyField } from "./copy-field";
 
@@ -79,7 +79,7 @@ function ApproveApplication({ applicationId, name, approve }: { applicationId: s
  * where it survives that re-render.
  */
 export function PendingApplications({ rows }: { rows: PendingRow[] }) {
-  const [approved, approve] = useFormState(approveApplicationAction, INITIAL);
+  const [approved, approve] = useFormState(countersignAndApproveAction, INITIAL);
 
   return (
     <div className="flex flex-col gap-4">

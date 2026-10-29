@@ -16,7 +16,9 @@
     "db:pull": "prisma db pull && prisma generate",
     "db:create-admin": "tsx prisma/create-admin.ts",
     "db:drift": "prisma migrate diff --from-schema-datamodel prisma/schema.prisma --to-schema-datasource prisma/schema.prisma --exit-code",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "agreements:samples": "tsx scripts/agreement-samples.ts",
+    "onboarding:demo": "tsx scripts/onboarding-demo.ts"
   },
   "//": [
     "`db:migrate` was REMOVED. The tables this app reads and writes are shared with",
@@ -41,6 +43,7 @@
     "iron-session": "^8.0.4",
     "lucide-react": "^1.46.0",
     "next": "14.2.35",
+    "pdfmake": "0.2.23",
     "react": "^18",
     "react-dom": "^18",
     "tailwind-merge": "^3.7.0",
@@ -48,6 +51,7 @@
   },
   "devDependencies": {
     "@types/node": "^20",
+    "@types/pdfmake": "^0.2.13",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "eslint": "^8",
