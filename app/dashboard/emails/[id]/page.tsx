@@ -60,7 +60,7 @@ export default async function EmailPage({ params }: { params: { id: string } }) 
           {email.applicationId && (
             <>
               {" · "}
-              <Link href={`/dashboard/partners/applications/${email.applicationId}`} className="font-semibold text-link hover:underline">
+              <Link href={`/dashboard/partners/applications/${email.applicationId}`} className="font-semibold text-link underline underline-offset-4 hover:text-link-hover">
                 Open the application
               </Link>
             </>

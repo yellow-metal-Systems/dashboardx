@@ -59,7 +59,7 @@ export default async function PartnerRewardsPage({ params }: { params: { partner
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-heading-lg text-on-surface">{partner.orgName}</h1>
         <Badge variant="grey">{partner.type === "ORGANISATION" ? "Organisation" : "Individual"}</Badge>
-        <Link href={`/dashboard/partners/${partner.id}`} className="text-sm text-link hover:underline">Partner details</Link>
+        <Link href={`/dashboard/partners/${partner.id}`} className="text-sm text-link underline underline-offset-4 hover:text-link-hover">Partner details</Link>
       </div>
 
       {admin && (

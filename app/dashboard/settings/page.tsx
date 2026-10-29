@@ -113,7 +113,7 @@ export default async function SettingsPage() {
                 <Row label="Last 7 days">{status.lms.lastWeek}</Row>
                 <Row label="Waiting to match">
                   {status.lms.awaitingReview > 0 ? (
-                    <Link href="/dashboard/leads/lms-review" className="text-link hover:underline">
+                    <Link href="/dashboard/leads/lms-review" className="text-link underline underline-offset-4 hover:text-link-hover">
                       {status.lms.awaitingReview}
                     </Link>
                   ) : (
@@ -158,7 +158,7 @@ export default async function SettingsPage() {
               </dl>
               <p className="mt-3 text-xs text-on-surface-variant">
                 Keys are issued and revoked on each partner&apos;s page in{" "}
-                <Link href="/dashboard/partners" className="text-link hover:underline">Partners</Link>.
+                <Link href="/dashboard/partners" className="text-link underline underline-offset-4 hover:text-link-hover">Partners</Link>.
               </p>
             </section>
           </CardContent>

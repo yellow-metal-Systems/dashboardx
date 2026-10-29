@@ -85,7 +85,7 @@ export default async function RewardsPage({ searchParams }: { searchParams: { q?
       {editRules && (
         <p className="text-sm text-on-surface-variant">
           Reward rules (rates and the monthly bonus) are in{" "}
-          <Link href="/dashboard/settings" className="text-link hover:underline">Settings</Link>.
+          <Link href="/dashboard/settings" className="text-link underline underline-offset-4 hover:text-link-hover">Settings</Link>.
         </p>
       )}
 
@@ -100,7 +100,7 @@ export default async function RewardsPage({ searchParams }: { searchParams: { q?
               {awaiting.map((a, i) => (
                 <span key={a.leadId}>
                   {i > 0 && ", "}
-                  <Link href={`/dashboard/leads/${a.leadId}`} className="text-link hover:underline">{a.name}</Link> ({a.orgName})
+                  <Link href={`/dashboard/leads/${a.leadId}`} className="text-link underline underline-offset-4 hover:text-link-hover">{a.name}</Link> ({a.orgName})
                 </span>
               ))}
             </span>

@@ -90,7 +90,7 @@ export default async function PartnerPage({ params }: { params: { id: string } }
               <div><span className="block text-on-surface-variant">Paid</span><b>{formatInr(sum("PAID"))}</b></div>
               <p className="col-span-3 text-xs text-on-surface-variant">
                 {p.payoutDetails ? "PAN and bank details added." : "No PAN and bank details yet — they add them in the LeadBridge app."}{" "}
-                <Link href={`/dashboard/rewards/${p.id}`} className="font-bold text-link hover:underline">Open statement</Link>
+                <Link href={`/dashboard/rewards/${p.id}`} className="font-bold text-link underline underline-offset-4 hover:text-link-hover">Open statement</Link>
               </p>
             </CardContent>
           </Card>
@@ -101,7 +101,7 @@ export default async function PartnerPage({ params }: { params: { id: string } }
             <CardTitle>Leads</CardTitle>
             <p className="text-sm text-on-surface-variant">
               {p._count.leads} from this partner{p._count.leads > p.leads.length ? ` · latest ${p.leads.length}` : ""} ·{" "}
-              <Link href={`/dashboard/rewards/${p.id}`} className="text-link hover:underline">rewards by lead</Link>
+              <Link href={`/dashboard/rewards/${p.id}`} className="text-link underline underline-offset-4 hover:text-link-hover">rewards by lead</Link>
             </p>
           </CardHeader>
           <CardContent>
