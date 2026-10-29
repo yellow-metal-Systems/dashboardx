@@ -49,7 +49,7 @@ export default async function EmailPage({ params }: { params: { id: string } }) 
         <SidebarTrigger />
       </div>
       <Link href="/dashboard/emails" className="flex w-fit items-center gap-1 text-sm text-on-surface-variant hover:underline">
-        <ChevronLeft className="size-4" /> Sent emails
+        <ChevronLeft className="size-4" aria-hidden="true" /> Sent emails
       </Link>
 
       <div className="flex flex-col gap-2">

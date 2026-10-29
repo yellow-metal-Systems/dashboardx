@@ -99,7 +99,7 @@ export default async function SettingsPage() {
             <CardTitle>Integrations</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-3">
-            <section className="rounded-xl border border-outline-variant p-4">
+            <section className="rounded-lg border border-outline-variant p-4">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <h3 className="text-sm font-bold text-on-surface">Loan Managers App (LMS)</h3>
                 {status.lms.awaitingReview > 0 ? (
@@ -125,7 +125,7 @@ export default async function SettingsPage() {
               </dl>
             </section>
 
-            <section className="rounded-xl border border-outline-variant p-4">
+            <section className="rounded-lg border border-outline-variant p-4">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <h3 className="text-sm font-bold text-on-surface">AarthikLabs (ONDC)</h3>
                 {!status.aarthik ? (
@@ -147,7 +147,7 @@ export default async function SettingsPage() {
               )}
             </section>
 
-            <section className="rounded-xl border border-outline-variant p-4">
+            <section className="rounded-lg border border-outline-variant p-4">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <h3 className="text-sm font-bold text-on-surface">Partner API</h3>
                 <Badge variant={status.apiKeys.active > 0 ? "success" : "grey"}>

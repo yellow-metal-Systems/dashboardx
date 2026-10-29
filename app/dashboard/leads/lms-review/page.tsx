@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -38,7 +38,7 @@ export default async function LmsReviewPage() {
       <div className="flex items-center gap-2">
         <SidebarTrigger />
         <Link href="/dashboard" className="inline-flex items-center gap-1 text-sm text-on-surface-variant hover:underline">
-          <ArrowLeft className="size-4" aria-hidden="true" /> Leads
+          <ChevronLeft className="size-4" aria-hidden="true" /> Leads
         </Link>
       </div>
       <div>

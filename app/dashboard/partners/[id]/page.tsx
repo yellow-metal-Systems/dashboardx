@@ -43,7 +43,7 @@ export default async function PartnerPage({ params }: { params: { id: string } }
         <SidebarTrigger />
       </div>
       <Link href="/dashboard/partners" className="flex w-fit items-center gap-1 text-sm text-on-surface-variant hover:underline">
-        <ChevronLeft className="size-4" /> All partners
+        <ChevronLeft className="size-4" aria-hidden="true" /> All partners
       </Link>
 
       <div className="flex flex-wrap items-center gap-3">

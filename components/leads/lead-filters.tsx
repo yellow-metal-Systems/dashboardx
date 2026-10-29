@@ -42,7 +42,7 @@ function FilterField({
     <div className={cn("flex flex-col gap-1", className)}>
       <label
         htmlFor={id}
-        className="text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant"
+        className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant"
       >
         {label}
       </label>

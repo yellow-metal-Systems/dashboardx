@@ -150,7 +150,7 @@ export default async function ApplicationPage({ params }: { params: { id: string
         href={`/dashboard/partners?tab=applications&status=${status}`}
         className="flex w-fit items-center gap-1 text-sm text-on-surface-variant hover:underline"
       >
-        <ChevronLeft className="size-4" /> Applications
+        <ChevronLeft className="size-4" aria-hidden="true" /> Applications
       </Link>
 
       <div className="flex flex-wrap items-center gap-3">
