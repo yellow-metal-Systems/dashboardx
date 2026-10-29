@@ -62,7 +62,7 @@ export default async function SettingsPage() {
             <Row label="Role">{ROLE_LABELS[access.role]}</Row>
           </dl>
           <div className="border-t border-outline-variant pt-6">
-            <h2 className="mb-4 text-sm font-bold text-on-surface">Change password</h2>
+            <h3 className="mb-4 text-sm font-bold text-on-surface">Change password</h3>
             <ChangePasswordForm email={access.email} />
           </div>
         </CardContent>
@@ -101,7 +101,7 @@ export default async function SettingsPage() {
           <CardContent className="grid gap-4 md:grid-cols-3">
             <section className="rounded-xl border border-outline-variant p-4">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <h2 className="text-sm font-bold text-on-surface">Loan Managers App (LMS)</h2>
+                <h3 className="text-sm font-bold text-on-surface">Loan Managers App (LMS)</h3>
                 {status.lms.awaitingReview > 0 ? (
                   <Badge variant="pending">Needs review</Badge>
                 ) : status.lms.lastReceivedAt ? (
@@ -127,7 +127,7 @@ export default async function SettingsPage() {
 
             <section className="rounded-xl border border-outline-variant p-4">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <h2 className="text-sm font-bold text-on-surface">AarthikLabs (ONDC)</h2>
+                <h3 className="text-sm font-bold text-on-surface">AarthikLabs (ONDC)</h3>
                 {!status.aarthik ? (
                   <Badge variant="grey">Can&apos;t check</Badge>
                 ) : status.aarthik.healthy ? (
@@ -149,7 +149,7 @@ export default async function SettingsPage() {
 
             <section className="rounded-xl border border-outline-variant p-4">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <h2 className="text-sm font-bold text-on-surface">Partner API</h2>
+                <h3 className="text-sm font-bold text-on-surface">Partner API</h3>
                 <Badge variant={status.apiKeys.active > 0 ? "success" : "grey"}>
                   {status.apiKeys.active > 0 ? "In use" : "No keys"}
                 </Badge>

@@ -65,44 +65,46 @@ export function AppSidebar({ staffName, staffEmail, role, permissions, pendingAp
     <Sidebar>
       <SidebarHeader>
         <div className="flex flex-col gap-3 px-2 py-1.5">
-          <Image src="/ym-logo.png" alt="YellowMetal" width={719} height={312} priority className="h-auto w-32" />
-          <span className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-muted">
+          <Image src="/ym-logo.png" alt="YellowMetal" width={719} height={312} sizes="128px" priority className="h-auto w-32" />
+          <span className="text-xs font-semibold uppercase tracking-widest text-sidebar-muted">
             Workspace
           </span>
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={item.href === activeHref}>
-                    <Link href={item.href}>
-                      <item.icon />
-                      <span>{item.title}</span>
+        <nav aria-label="Main">
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {items.map((item) => (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton asChild isActive={item.href === activeHref}>
+                      <Link href={item.href} aria-current={item.href === activeHref ? "page" : undefined}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                    {item.href === "/dashboard/partners" && pendingApplications > 0 && (
+                      <SidebarMenuBadge>
+                        {pendingApplications}
+                        <span className="sr-only"> applications waiting</span>
+                      </SidebarMenuBadge>
+                    )}
+                  </SidebarMenuItem>
+                ))}
+                {/* Every member has Settings (their own account), so it needs no permission. */}
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/settings")}>
+                    <Link href="/dashboard/settings" aria-current={pathname.startsWith("/dashboard/settings") ? "page" : undefined}>
+                      <Settings />
+                      <span>Settings</span>
                     </Link>
                   </SidebarMenuButton>
-                  {item.href === "/dashboard/partners" && pendingApplications > 0 && (
-                    <SidebarMenuBadge>
-                      {pendingApplications}
-                      <span className="sr-only"> applications waiting</span>
-                    </SidebarMenuBadge>
-                  )}
                 </SidebarMenuItem>
-              ))}
-              {/* Every member has Settings (their own account), so it needs no permission. */}
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/settings")}>
-                  <Link href="/dashboard/settings">
-                    <Settings />
-                    <span>Settings</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </nav>
       </SidebarContent>
       {/* Partners sign in and submit leads in the separate LeadBridge app, not here. */}
       <SidebarFooter>
@@ -121,19 +123,19 @@ export function AppSidebar({ staffName, staffEmail, role, permissions, pendingAp
               <span className="block truncate text-xs font-semibold text-sidebar-foreground" title={staffName}>
                 {staffName}
               </span>
-              <span className="block truncate text-[11px] text-sidebar-muted">{ROLE_LABELS[role]}</span>
+              <span className="block truncate text-xs text-sidebar-muted">{ROLE_LABELS[role]}</span>
             </span>
             <ChevronUp aria-hidden="true" className="size-4 shrink-0 text-sidebar-muted transition-transform group-open:rotate-180" />
           </summary>
           <div className="flex flex-col gap-1 px-2 pb-1.5 pt-1">
-            <p className="truncate text-[11px] text-sidebar-muted" title={staffEmail}>
+            <p className="truncate text-xs text-sidebar-muted" title={staffEmail}>
               {staffEmail}
             </p>
             {permissions.includes("team.manage") && (
               <SidebarMenu>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/team")}>
-                    <Link href="/dashboard/team">
+                    <Link href="/dashboard/team" aria-current={pathname.startsWith("/dashboard/team") ? "page" : undefined}>
                       <UserCog />
                       <span>Manage team</span>
                     </Link>

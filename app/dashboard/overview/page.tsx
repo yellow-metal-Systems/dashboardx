@@ -88,7 +88,7 @@ export default async function OverviewPage() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <Card>
           <CardContent className="flex flex-col gap-4 pt-6 md:pt-9">
-            <h2 className="text-sm font-semibold text-on-surface">Leads by status</h2>
+            <h2 className="text-heading-sm text-on-surface">Leads by status</h2>
             <ul className="flex flex-col gap-4">
               {LEAD_STATUSES.map((status) => {
                 const count = s.byStatus[status];
@@ -130,7 +130,7 @@ export default async function OverviewPage() {
 
         <Card>
           <CardContent className="flex flex-col gap-4 pt-6 md:pt-9">
-            <h2 className="text-sm font-semibold text-on-surface">
+            <h2 className="text-heading-sm text-on-surface">
               Top partners, last 30 days
             </h2>
             {s.topPartners.length === 0 ? (
