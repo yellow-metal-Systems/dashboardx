@@ -2,6 +2,7 @@ import { TrendingDown, TrendingUp } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { StatTile } from "@/components/stat-tile";
 import { cn } from "@/lib/utils";
 import { LEAD_STATUSES, statusLabel, type LeadStatus } from "@/lib/leads";
 import { getOverviewStats } from "@/lib/leads-repo";
@@ -19,31 +20,6 @@ const STATUS_BAR_CLASSES: Record<LeadStatus, string> = {
 
 function pct(part: number, whole: number): number {
   return whole === 0 ? 0 : Math.round((part / whole) * 100);
-}
-
-function StatTile({
-  label,
-  value,
-  suffix,
-  note,
-}: {
-  label: string;
-  value: number;
-  suffix?: string;
-  note: React.ReactNode;
-}) {
-  return (
-    <Card>
-      <CardContent className="flex flex-col gap-1 p-4 md:p-6">
-        <p className="text-xs text-on-surface-variant">{label}</p>
-        <p className="text-heading-xl tabular-nums text-on-surface">
-          {value}
-          {suffix}
-        </p>
-        <p className="text-xs text-on-surface-variant">{note}</p>
-      </CardContent>
-    </Card>
-  );
 }
 
 export default async function OverviewPage() {
