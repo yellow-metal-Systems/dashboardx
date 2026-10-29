@@ -51,6 +51,8 @@ export type NewPartnerInput = {
   type: PartnerType;
   isOndc: boolean;
   gstinRequired?: boolean;
+  /** A test partner approved on pre-prod (plan §2a): flagged so it can be told apart and removed. */
+  isDemo?: boolean;
   user: { name: string; mobile: string; email?: string | null };
   createdBy: string | null;
 };
@@ -85,6 +87,7 @@ export async function insertPartnerWithInvite(tx: Prisma.TransactionClient, inpu
       type: input.type,
       isOndc: input.isOndc,
       gstinRequired: input.gstinRequired ?? false,
+      isDemo: input.isDemo ?? false,
       status: "invited",
     },
   });

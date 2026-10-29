@@ -3,7 +3,10 @@ import { Suspense } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { IntegrationHealthBanner } from "@/components/integration-health-banner";
+import { PreprodBanner } from "@/components/preprod-banner";
 import { staffAccess } from "@/lib/auth/session";
+import { emailMode } from "@/lib/email";
+import { countPendingApplications } from "@/lib/partners/applications";
 
 export default async function DashboardLayout({
   children,
@@ -14,6 +17,7 @@ export default async function DashboardLayout({
   // borrower PII. Reads the live role (one small query), so a member who has been
   // turned off is signed out here rather than at their cookie's expiry.
   const staff = await staffAccess();
+  const pendingApplications = staff.permissions.includes("partners.view") ? await countPendingApplications() : 0;
 
   return (
     <SidebarProvider>
@@ -22,8 +26,12 @@ export default async function DashboardLayout({
         staffEmail={staff.email}
         role={staff.role}
         permissions={staff.permissions}
+        pendingApplications={pendingApplications}
+        showSentEmails={emailMode() === "log"}
       />
       <SidebarInset>
+        {/* In the content column, not above it: the sidebar is fixed to the top edge and would cover it. */}
+        <PreprodBanner />
         {/* fetchIntegrationHealth was measured taking ~3s of every page's TTFB
             (its own 4s timeout ceiling) when awaited here directly. It's
             decorative — nothing else on the page depends on it — so it streams

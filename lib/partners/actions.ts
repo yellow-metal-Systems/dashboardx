@@ -236,8 +236,10 @@ function sentMessage(r: SentAgreement, resent: boolean): string {
 export async function sendAgreementAction(_prev: ApplicationFormState, fd: FormData): Promise<ApplicationFormState> {
   const staff = await requirePermissionOrThrow("partners.manage");
   const applicationId = text(fd, "applicationId");
+  // The mobile is never verified (plan §1), so staff confirm they called before sending; recorded in the history.
+  if (fd.get("checksDone") !== "on") return { error: "Tick that you've called the applicant and checked their details." };
   try {
-    const sent = await sendAgreement(applicationId, await ratesFrom(fd, applicationId), staff.email);
+    const sent = await sendAgreement(applicationId, await ratesFrom(fd, applicationId), staff.email, true);
     revalidatePath("/dashboard/partners", "layout");
     return { error: null, ok: true, message: sentMessage(sent, false) };
   } catch (err) {

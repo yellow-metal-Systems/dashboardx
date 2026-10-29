@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, ChevronUp, ClipboardCheck, Inbox, LayoutDashboard, LogOut, Settings, UserCog, Users, Wallet } from "lucide-react";
+import { Building2, ChevronUp, ClipboardCheck, Inbox, LayoutDashboard, LogOut, Mail, Settings, UserCog, Users, Wallet } from "lucide-react";
 
 import { signOut } from "@/lib/auth/actions";
 import { ROLE_LABELS, type Permission, type StaffRole } from "@/lib/auth/roles";
@@ -15,6 +15,7 @@ import {
   SidebarGroupContent,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
@@ -24,6 +25,8 @@ const NAV_ITEMS: { title: string; href: string; icon: typeof Inbox; permission: 
   { title: "Leads", href: "/dashboard", icon: Inbox, permission: "leads.view", prefixes: ["/dashboard/leads"] },
   { title: "LMS review", href: "/dashboard/leads/lms-review", icon: ClipboardCheck, permission: "lms.resolve", prefixes: [] },
   { title: "Partners", href: "/dashboard/partners", icon: Building2, permission: "partners.view", prefixes: ["/dashboard/partners/"] },
+  // The onboarding emails; in demo (log) mode, the mailbox the flow is followed from.
+  { title: "Sent emails", href: "/dashboard/emails", icon: Mail, permission: "partners.manage", prefixes: ["/dashboard/emails/"] },
   { title: "Rewards", href: "/dashboard/rewards", icon: Wallet, permission: "rewards.view", prefixes: ["/dashboard/rewards/"] },
   { title: "Team", href: "/dashboard/team", icon: Users, permission: "team.manage", prefixes: [] },
   // Overview lists top partners, so it follows partners.view (admins), like Partners.
@@ -35,11 +38,17 @@ type Props = {
   staffEmail: string;
   role: StaffRole;
   permissions: Permission[];
+  /** Applications waiting on an admin (new + signed), shown on Partners. */
+  pendingApplications: number;
+  /** Sent emails is the demo mailbox: only while emails are logged, not sent (EMAIL_MODE=log). */
+  showSentEmails: boolean;
 };
 
-export function AppSidebar({ staffName, staffEmail, role, permissions }: Props) {
+export function AppSidebar({ staffName, staffEmail, role, permissions, pendingApplications, showSentEmails }: Props) {
   const pathname = usePathname();
-  const items = NAV_ITEMS.filter((item) => permissions.includes(item.permission));
+  const items = NAV_ITEMS.filter(
+    (item) => permissions.includes(item.permission) && (item.href !== "/dashboard/emails" || showSentEmails)
+  );
 
   // Longest match wins, so /dashboard/leads/lms-review lights "LMS review", not "Leads".
   const matchLength = (item: (typeof NAV_ITEMS)[number]) =>
@@ -74,6 +83,12 @@ export function AppSidebar({ staffName, staffEmail, role, permissions }: Props) 
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
+                  {item.href === "/dashboard/partners" && pendingApplications > 0 && (
+                    <SidebarMenuBadge>
+                      {pendingApplications}
+                      <span className="sr-only"> applications waiting</span>
+                    </SidebarMenuBadge>
+                  )}
                 </SidebarMenuItem>
               ))}
               {/* Every member has Settings (their own account), so it needs no permission. */}

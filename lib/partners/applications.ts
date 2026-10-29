@@ -2,7 +2,7 @@ import { createHash, randomBytes, randomUUID } from "crypto";
 import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
-import { IS_PRODUCTION, LEADBRIDGE_URL } from "@/lib/env";
+import { IS_PRODUCTION, LEADBRIDGE_URL, isPreprod } from "@/lib/env";
 import { sendEmail } from "@/lib/email";
 import { agreementSent, approved, rejected } from "@/lib/email-templates";
 import {
@@ -240,7 +240,13 @@ async function emailAgreement(app: ApplicationRow, template: AgreementTemplate, 
 }
 
 /** Sends the agreement for a pending application: stores the exact PDF, emails a single-use signing link. */
-export async function sendAgreement(applicationId: string, rates: DsaRates | BcRates, staffEmail: string): Promise<SentAgreement> {
+export async function sendAgreement(
+  applicationId: string,
+  rates: DsaRates | BcRates,
+  staffEmail: string,
+  /** Staff confirmed they called the applicant and checked the details (the mobile is never verified). */
+  checksDone = false
+): Promise<SentAgreement> {
   const app = await prisma.partnerApplication.findUnique({ where: { id: applicationId } });
   if (!app) throw new ApplicationError("Application not found.");
   if (app.status !== "PENDING") throw new ApplicationError("The agreement was already sent for this application.");
@@ -255,7 +261,7 @@ export async function sendAgreement(applicationId: string, rates: DsaRates | BcR
     });
     if (claimed.count !== 1) throw new ApplicationError("The agreement was already sent for this application.");
     const issued = await issueAgreement(tx, app, fields, pdf, agreementId, staffEmail);
-    await addEvent(tx, app.id, "agreement_sent", staffEmail, { agreementId, template: fields.template, templateVersion: TEMPLATE_VERSIONS[fields.template] });
+    await addEvent(tx, app.id, "agreement_sent", staffEmail, { agreementId, template: fields.template, templateVersion: TEMPLATE_VERSIONS[fields.template], checksDone });
     return issued;
   });
 
@@ -446,6 +452,7 @@ export async function countersignAndApprove(
         type: company ? "ORGANISATION" : "INDIVIDUAL",
         isOndc: false,
         gstinRequired: false,
+        isDemo: isPreprod(),
         user: { name: app.name, mobile: app.mobile, email: app.email },
         createdBy: staffEmail,
       });

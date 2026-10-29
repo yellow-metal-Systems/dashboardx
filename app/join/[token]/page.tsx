@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { JoinForm } from "@/components/auth/join-form";
+import { PreprodBanner } from "@/components/preprod-banner";
 import { Card, CardContent } from "@/components/ui/card";
 import { ROLE_LABELS } from "@/lib/auth/roles";
 import { findInvite } from "@/lib/team/team";
@@ -19,6 +20,7 @@ export default async function JoinPage({ params }: { params: { token: string } }
   return (
     <main className="flex min-h-svh items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-sm">
+        <PreprodBanner className="mb-6 rounded-lg" />
         <div className="mb-8 text-center">
           <Image src="/ym-logo.png" alt="YellowMetal" width={719} height={312} priority className="mx-auto h-auto w-44" />
           <p className="mt-3 text-xs font-semibold uppercase tracking-widest text-on-surface-variant">
