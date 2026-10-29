@@ -1,7 +1,7 @@
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Matches leads-dashboard.tsx's shape (header + 4 stat cards + filter bar +
+// Matches leads-dashboard.tsx's shape (header + range pills + 3 stat tiles + filter bar +
 // table) so nothing visibly reflows once the real data lands. Without this,
 // clicking "Leads" in the sidebar showed nothing at all until listLeads() and
 // listPartners() resolved, which read as the click not having registered.
@@ -16,20 +16,20 @@ export default function Loading() {
           <Skeleton className="h-8 w-24" />
           <Skeleton className="h-4 w-48" />
         </div>
-        <Skeleton className="h-10 w-full md:w-72" />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i}>
-            <CardHeader className="p-4 pb-2 md:p-6 md:pb-2">
-              <Skeleton className="h-4 w-20" />
-            </CardHeader>
-            <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
-              <Skeleton className="h-8 w-12" />
-            </CardContent>
-          </Card>
-        ))}
+      <div className="flex flex-col gap-3">
+        <Skeleton className="h-10 w-full rounded-full md:w-[34rem]" />
+        <div className="grid grid-cols-3 gap-3 md:max-w-xl">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i}>
+              <CardContent className="flex flex-col gap-2 p-4 md:p-6">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-10 w-12" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
 
       <Card>
