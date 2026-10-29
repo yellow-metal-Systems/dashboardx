@@ -22,7 +22,7 @@ const PAD = "p-5 md:p-6";
 function CountCell({ count, amount }: { count: number; amount?: number }) {
   if (count === 0) return <span className="text-on-surface-variant">—</span>;
   return (
-    <span className="flex flex-col">
+    <span className="flex flex-col items-end">
       <span className="tabular-nums">{count}</span>
       {amount !== undefined && <span className="text-xs tabular-nums text-on-surface-variant">{formatInr(amount)}</span>}
     </span>
@@ -124,26 +124,26 @@ export default async function RewardsPage({ searchParams }: { searchParams: { q?
                 <TableRow className="[&>th]:whitespace-nowrap">
                   <TableHead>Partner</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead>To approve</TableHead>
-                  <TableHead>To pay</TableHead>
-                  <TableHead>{admin ? "Paid (this year)" : "Paid"}</TableHead>
-                  <TableHead>Rejected</TableHead>
+                  <TableHead className="text-right">To approve</TableHead>
+                  <TableHead className="text-right">To pay</TableHead>
+                  <TableHead className="text-right">{admin ? "Paid (this year)" : "Paid"}</TableHead>
+                  <TableHead className="text-right">Rejected</TableHead>
                   {admin && <TableHead>Flags</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {shown.map((r) => (
                   <TableRow key={r.id} className="relative" data-partner={r.id}>
-                    <TableCell className="font-medium text-on-surface">
+                    <TableCell className="text-on-surface">
                       <Link href={`/dashboard/rewards/${r.id}`} className="after:absolute after:inset-0 hover:underline">
                         {r.orgName}
                       </Link>
                     </TableCell>
-                    <TableCell className="text-on-surface-variant">{r.type === "ORGANISATION" ? "Organisation" : "Individual"}</TableCell>
-                    <TableCell><CountCell count={r.counts.PENDING} amount={r.money?.toApprove} /></TableCell>
-                    <TableCell><CountCell count={r.counts.APPROVED} amount={r.money?.owed} /></TableCell>
-                    <TableCell><CountCell count={r.counts.PAID} amount={r.money?.paidThisFy} /></TableCell>
-                    <TableCell><CountCell count={r.counts.REJECTED} /></TableCell>
+                    <TableCell className="font-semibold text-on-surface-variant">{r.type === "ORGANISATION" ? "Organisation" : "Individual"}</TableCell>
+                    <TableCell className="text-right"><CountCell count={r.counts.PENDING} amount={r.money?.toApprove} /></TableCell>
+                    <TableCell className="text-right"><CountCell count={r.counts.APPROVED} amount={r.money?.owed} /></TableCell>
+                    <TableCell className="text-right"><CountCell count={r.counts.PAID} amount={r.money?.paidThisFy} /></TableCell>
+                    <TableCell className="text-right"><CountCell count={r.counts.REJECTED} /></TableCell>
                     {admin && <TableCell><Flags row={r} /></TableCell>}
                   </TableRow>
                 ))}

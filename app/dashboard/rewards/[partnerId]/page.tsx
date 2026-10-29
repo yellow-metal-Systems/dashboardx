@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ApproveReward, MarkPaid, RejectReward, RevealDetails } from "@/components/rewards/reward-controls";
 import { RewardPill } from "@/components/rewards/reward-pill";
 import { requirePermission } from "@/lib/auth/session";
-import { formatDate, formatDateTime, formatInr, statusLabel } from "@/lib/leads";
+import { formatDate, formatDateTime, formatInr, statusBadgeClass, statusLabel } from "@/lib/leads";
 import { getPartnerRewardStatement, payoutDateFor, type StatementReward } from "@/lib/partners/rewards";
 import { cn } from "@/lib/utils";
 
@@ -124,11 +124,13 @@ export default async function PartnerRewardsPage({ params }: { params: { partner
               <TableBody>
                 {leads.map((l) => (
                   <TableRow key={l.id} data-lead={l.id}>
-                    <TableCell className="font-medium">
+                    <TableCell>
                       <Link href={`/dashboard/leads/${l.id}`} className="hover:underline">{l.name}</Link>
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">{statusLabel(l.status)}</TableCell>
-                    <TableCell className="whitespace-nowrap">{formatDate(iso(l.createdAt))}</TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      <Badge className={cn("border-transparent", statusBadgeClass(l.status))}>{statusLabel(l.status)}</Badge>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap tabular-nums font-semibold text-on-surface-variant">{formatDate(iso(l.createdAt))}</TableCell>
                     <TableCell className="whitespace-nowrap tabular-nums">
                       {l.disbursementDate ? formatDate(iso(l.disbursementDate)) : "—"}
                       {admin && l.disbursementAmount ? <span className="block text-xs text-on-surface-variant">{formatInr(Number(l.disbursementAmount))}</span> : null}

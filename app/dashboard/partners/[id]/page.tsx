@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { CreateApiKey, GstinRequiredToggle, ResendInvite, RevokeApiKey, TogglePartner } from "@/components/partners/partner-controls";
 import { requirePermission } from "@/lib/auth/session";
-import { PARTNER_STATUS_BADGE_CLASSES, formatDate, formatInr, statusLabel } from "@/lib/leads";
+import { PARTNER_STATUS_BADGE_CLASSES, formatDate, formatInr, statusBadgeClass, statusLabel } from "@/lib/leads";
 import { prisma } from "@/lib/prisma";
 import { cn } from "@/lib/utils";
 
@@ -115,7 +115,7 @@ export default async function PartnerPage({ params }: { params: { id: string } }
                   <li key={l.id} className="flex items-center justify-between gap-3 py-2">
                     <Link href={`/dashboard/leads/${l.id}`} className="font-medium hover:underline">{l.name}</Link>
                     <span className="flex items-center gap-3 text-on-surface-variant">
-                      <span>{statusLabel(l.status)}</span>
+                      <Badge className={cn("border-transparent", statusBadgeClass(l.status))}>{statusLabel(l.status)}</Badge>
                       <span className="tabular-nums">{formatDate(l.createdAt.toISOString())}</span>
                     </span>
                   </li>

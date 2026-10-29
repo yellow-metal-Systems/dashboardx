@@ -52,17 +52,17 @@ export default async function EmailsPage() {
               <TableBody>
                 {emails.map((e) => (
                   <TableRow key={e.id} className="relative">
-                    <TableCell className="font-medium text-on-surface">
+                    <TableCell className="text-on-surface">
                       <Link href={`/dashboard/emails/${e.id}`} className="after:absolute after:inset-0 hover:underline">
                         {e.subject}
                       </Link>
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">{e.toAddress}</TableCell>
+                    <TableCell className="whitespace-nowrap font-semibold text-on-surface-variant">{e.toAddress}</TableCell>
                     <TableCell className="whitespace-nowrap">
                       <EmailStatus status={e.status} />
                       {e.error && <span className="mt-1 block text-xs text-error">{e.error}</span>}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">{formatDateTime(e.createdAt.toISOString())}</TableCell>
+                    <TableCell className="whitespace-nowrap tabular-nums font-semibold text-on-surface-variant">{formatDateTime(e.createdAt.toISOString())}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

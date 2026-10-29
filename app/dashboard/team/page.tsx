@@ -53,10 +53,10 @@ export default async function TeamPage() {
                 const self = m.id === access.userId;
                 return (
                   <TableRow key={m.id}>
-                    <TableCell className="font-medium text-on-surface">
+                    <TableCell className="text-on-surface">
                       {m.name}
                       {self && <span className="ml-1 text-xs text-on-surface-variant">(you)</span>}
-                      <span className="block text-xs font-normal text-on-surface-variant">{m.email}</span>
+                      <span className="block text-xs font-semibold text-on-surface-variant">{m.email}</span>
                     </TableCell>
                     <TableCell>
                       {/* The server refuses changing your own role or account; don't offer it. */}
@@ -67,7 +67,7 @@ export default async function TeamPage() {
                         {m.isActive ? "Active" : "Turned off"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">
+                    <TableCell className="whitespace-nowrap tabular-nums font-semibold text-on-surface-variant">
                       {m.lastLoginAt ? formatDateTime(m.lastLoginAt.toISOString()) : "Never"}
                     </TableCell>
                     <TableCell className="text-right">{!self && <MemberActive memberId={m.id} active={m.isActive} />}</TableCell>
@@ -99,12 +99,12 @@ export default async function TeamPage() {
               <TableBody>
                 {invites.map((i) => (
                   <TableRow key={i.id}>
-                    <TableCell className="font-medium text-on-surface">
+                    <TableCell className="text-on-surface">
                       {i.name}
-                      <span className="block text-xs font-normal text-on-surface-variant">{i.email}</span>
+                      <span className="block text-xs font-semibold text-on-surface-variant">{i.email}</span>
                     </TableCell>
-                    <TableCell>{ROLE_LABELS[i.role]}</TableCell>
-                    <TableCell className="whitespace-nowrap">{formatDate(i.expiresAt.toISOString())}</TableCell>
+                    <TableCell className="font-semibold text-on-surface-variant">{ROLE_LABELS[i.role]}</TableCell>
+                    <TableCell className="whitespace-nowrap tabular-nums font-semibold text-on-surface-variant">{formatDate(i.expiresAt.toISOString())}</TableCell>
                     <TableCell className="text-right"><RevokeInvite inviteId={i.id} /></TableCell>
                   </TableRow>
                 ))}
