@@ -131,7 +131,7 @@ export default async function SettingsPage() {
                 ) : status.aarthik.healthy ? (
                   <Badge variant="success">Working</Badge>
                 ) : (
-                  <Badge variant="pending">Problem</Badge>
+                  <Badge variant="destructive">Problem</Badge>
                 )}
               </div>
               {status.aarthik ? (
