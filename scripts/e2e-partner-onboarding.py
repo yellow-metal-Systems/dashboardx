@@ -127,7 +127,7 @@ with sync_playwright() as p:
     step("Sign on the phone (a wrong name is refused first)")
     lb.goto(sign_url)
     # A fresh `next dev` compiles the pdf.js worker (1.3 MB) on first use, which can take over a minute.
-    expect(lb.locator('[aria-label^="Page 1 of"] canvas')).to_be_visible(timeout=180_000)
+    expect(lb.locator('.page[data-page-number="1"] canvas')).to_be_visible(timeout=180_000)
     expect(lb.get_by_text("Loading the agreement…")).to_have_count(0)
     shot(lb, "04-sign-page")
     lb.fill("#sign-name", "suresh gowda")  # missing the TEST prefix
