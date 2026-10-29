@@ -4,6 +4,16 @@ import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   approveRewardAction,
@@ -54,20 +64,39 @@ export function ApproveReward({ rewardId }: { rewardId: string }) {
   );
 }
 
+// In a dialog, not an inline <details>: opening it inside a table cell pushed the
+// whole statement table out of shape. On success the page re-renders without the
+// Reject button, which closes the dialog with it.
 export function RejectReward({ rewardId }: { rewardId: string }) {
   const [state, action] = useFormState<RewardFormState, FormData>(rejectRewardAction, { error: null });
   return (
-    <details className="group text-sm">
-      <summary className="inline-flex cursor-pointer list-none items-center gap-1 font-bold text-error [&::-webkit-details-marker]:hidden">
-        Reject…
-      </summary>
-      <form action={action} className="mt-3 flex flex-wrap items-center gap-2">
-        <input type="hidden" name="rewardId" value={rewardId} />
-        <Input name="reason" placeholder="Reason the partner will see" aria-label="Reason" className="w-full sm:w-80" />
-        <Pending idle="Reject reward" busy="Rejecting…" variant="destructive" size="lg" />
-        <Err state={state} />
-      </form>
-    </details>
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button type="button" size="sm" variant="ghost" className="text-error">
+          Reject…
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Reject reward</DialogTitle>
+          <DialogDescription>The partner sees the reason in the LeadBridge app.</DialogDescription>
+        </DialogHeader>
+        <form action={action} className="flex flex-col gap-4">
+          <input type="hidden" name="rewardId" value={rewardId} />
+          <label className="flex flex-col gap-1.5 text-sm">
+            <span className="font-bold text-on-surface">Reason</span>
+            <Input name="reason" placeholder="Reason the partner will see" />
+          </label>
+          <Err state={state} />
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Cancel</Button>
+            </DialogClose>
+            <Pending idle="Reject reward" busy="Rejecting…" variant="destructive" size="lg" />
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -89,23 +118,27 @@ export function MarkPaid({
   return (
     <form action={action} className="flex flex-col gap-2">
       <input type="hidden" name="rewardId" value={rewardId} />
-      <div className="flex flex-wrap items-center gap-2">
-        <Input name="paymentRef" placeholder="UTR / payment reference" aria-label="Payment reference" className="w-full sm:w-56" disabled={disabled} />
-        <Input
-          name="tds"
-          placeholder="TDS ₹ (0)"
-          inputMode="decimal"
-          aria-label="TDS"
-          className="w-full sm:w-28"
-          disabled={disabled}
-          value={tds}
-          onChange={(e) => setTds(e.target.value)}
-        />
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="flex w-full flex-col gap-1 sm:w-56">
+          <span className="text-xs font-bold text-on-surface-variant">Payment reference (UTR)</span>
+          <Input name="paymentRef" placeholder="UTR / payment reference" disabled={disabled} />
+        </label>
+        <label className="flex w-full flex-col gap-1 sm:w-28">
+          <span className="text-xs font-bold text-on-surface-variant">TDS (₹)</span>
+          <Input
+            name="tds"
+            placeholder="0"
+            inputMode="decimal"
+            disabled={disabled}
+            value={tds}
+            onChange={(e) => setTds(e.target.value)}
+          />
+        </label>
         {disabled ? (
-          <span className="text-xs text-on-surface-variant">Waiting for PAN and bank details</span>
+          <span className="py-2.5 text-xs text-on-surface-variant">Waiting for PAN and bank details</span>
         ) : (
           <>
-            <span className="text-sm text-on-surface-variant" data-net>
+            <span className="py-2 text-sm tabular-nums text-on-surface-variant" data-net>
               Pay {formatInr(Math.max(0, amount - tdsNum))}
             </span>
             <Pending idle="Mark paid" busy="Saving…" variant="dark" size="lg" />
@@ -173,7 +206,6 @@ export function RewardRulesForm({ current }: { current: { basePercent: number; b
     <form action={action} key={key} className="flex flex-col gap-4">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between lg:gap-10">
         <div className="flex max-w-xl flex-col gap-1">
-          <h2 className="text-heading-sm text-on-surface">Reward rules</h2>
           <p className="text-sm text-on-surface-variant">
             A share of each disbursed loan, plus a bonus on the whole month when a partner goes above the threshold.
           </p>
@@ -181,27 +213,31 @@ export function RewardRulesForm({ current }: { current: { basePercent: number; b
         </div>
         <div className="flex shrink-0 flex-wrap items-end gap-4">
           <RuleField label="Per loan" unit="%">
-            <Input name="basePercent" value={base} onChange={(e) => setBase(e.target.value)} inputMode="decimal" aria-label="Reward percent" className="w-20" />
+            <Input name="basePercent" value={base} onChange={(e) => setBase(e.target.value)} inputMode="decimal" className="w-20" />
           </RuleField>
           <RuleField label="Monthly bonus" unit="%">
-            <Input name="bonusPercent" value={bonus} onChange={(e) => setBonus(e.target.value)} inputMode="decimal" aria-label="Monthly bonus percent" className="w-20" />
+            <Input name="bonusPercent" value={bonus} onChange={(e) => setBonus(e.target.value)} inputMode="decimal" className="w-20" />
           </RuleField>
           <RuleField label="Bonus above (₹)" unit="crore">
-            <Input name="bonusThresholdCrore" value={crore} onChange={(e) => setCrore(e.target.value)} inputMode="decimal" aria-label="Monthly bonus threshold in crore" className="w-20" />
+            <Input name="bonusThresholdCrore" value={crore} onChange={(e) => setCrore(e.target.value)} inputMode="decimal" className="w-20" />
           </RuleField>
         </div>
       </div>
       {changes.length > 0 && (
         <div className="flex flex-col gap-2 rounded-lg bg-pending-soft p-4 text-sm text-on-pending-soft" data-rule-changes>
           <b>{changes.join(" · ")}</b>
-          <div className="flex flex-wrap items-center gap-2">
-            <Input name="reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why are the rules changing?" aria-label="Reason for the change" className="w-full sm:w-96" />
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="flex w-full flex-col gap-1 sm:w-96">
+              <span className="text-xs font-bold">Reason for the change</span>
+              <Input name="reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why are the rules changing?" />
+            </label>
             <Pending idle="Save new rules" busy="Saving…" variant="dark" size="lg" disabled={reason.trim().length < 5} />
           </div>
         </div>
       )}
       <Err state={state} />
-      {state.ok && <span className="text-xs font-bold text-on-success-soft">Saved.</span>}
+      {/* Always mounted, so screen readers announce "Saved." when it appears. */}
+      <span role="status" className={state.ok ? "text-xs font-bold text-on-success-soft" : "sr-only"}>{state.ok ? "Saved." : ""}</span>
     </form>
   );
 }
