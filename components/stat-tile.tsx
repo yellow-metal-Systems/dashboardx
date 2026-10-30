@@ -1,6 +1,19 @@
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
-/** A headline number on a card. Overview and the Leads page share it. */
+/**
+ * Headline numbers in one card, split by thin lines: the look of the Leads
+ * strip. Pass the column count for wide screens (lg:grid-cols-N).
+ */
+export function StatStrip({ className, children }: { className?: string; children: React.ReactNode }) {
+  return (
+    <Card className={cn("grid divide-y divide-outline-variant overflow-hidden lg:divide-x lg:divide-y-0", className)}>
+      {children}
+    </Card>
+  );
+}
+
+/** One headline number inside a StatStrip. Overview and Rewards share it. */
 export function StatTile({
   label,
   value,
@@ -8,20 +21,18 @@ export function StatTile({
   note,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   suffix?: string;
   note?: React.ReactNode;
 }) {
   return (
-    <Card>
-      <CardContent className="flex flex-col gap-1 p-4 md:p-6">
-        <p className="text-xs text-on-surface-variant">{label}</p>
-        <p className="text-heading-xl tabular-nums text-on-surface">
-          {value}
-          {suffix}
-        </p>
-        {note && <p className="text-xs text-on-surface-variant">{note}</p>}
-      </CardContent>
-    </Card>
+    <div className="flex flex-col gap-1 p-4 md:p-5">
+      <p className="text-xs text-on-surface-variant">{label}</p>
+      <p className="text-heading-xl tabular-nums text-on-surface">
+        {value}
+        {suffix}
+      </p>
+      {note && <p className="text-xs text-on-surface-variant">{note}</p>}
+    </div>
   );
 }

@@ -197,10 +197,7 @@ export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 
 
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-on-surface-variant">
-            Internal
-          </p>
-          <h1 className="mt-1 text-heading-lg text-on-surface">
+          <h1 className="text-heading-lg text-on-surface">
             Leads <span className="ml-1 text-heading-md font-medium tabular-nums text-on-surface-variant">{leads.length}</span>
           </h1>
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-on-surface-variant">
@@ -263,9 +260,9 @@ export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 
         </div>
 
         {/* One strip, like the reference: each number with its change vs the window before and the last 14 days. */}
-        <Card className="grid divide-y divide-outline-variant overflow-hidden sm:grid-cols-3 sm:divide-x sm:divide-y-0 md:max-w-4xl">
+        <Card className="grid divide-y divide-outline-variant overflow-hidden sm:grid-cols-3 sm:divide-x sm:divide-y-0">
           <Kpi label="Total leads" value={stats.total} before={previous?.total} days={daily.total} />
-          <Kpi label="New" value={stats.newCustomers} before={previous?.newCustomers} days={daily.newCustomers} />
+          <Kpi label="New customers" value={stats.newCustomers} before={previous?.newCustomers} days={daily.newCustomers} />
           <Kpi label="Disbursed" value={stats.disbursed} before={previous?.disbursed} days={daily.disbursed} />
         </Card>
       </div>
@@ -284,10 +281,6 @@ export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 
             </p>
           )}
 
-          <p className="text-xs text-on-surface-variant">
-            Click a row for full details.
-          </p>
-
           {filteredLeads.length === 0 ? (
             <p className="py-10 text-center text-sm text-on-surface-variant">
               {leads.length === 0
@@ -297,7 +290,7 @@ export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="[&>th]:h-9 [&>th]:whitespace-nowrap [&>th]:text-[10.5px] [&>th]:font-semibold [&>th]:uppercase [&>th]:tracking-[0.07em]">
+                <TableRow className="[&>th]:whitespace-nowrap">
                   <TableHead>Consumer</TableHead>
                   <TableHead>Mobile</TableHead>
                   <TableHead>Pincode</TableHead>

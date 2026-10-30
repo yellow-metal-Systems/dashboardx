@@ -260,7 +260,8 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
           </CardContent>
         </Card>
 
-        <Card className="lg:sticky lg:top-6">
+        {/* Pinned while the lead scrolls; a long history scrolls inside it instead of running off the screen. */}
+        <Card className="lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
           {/* Explicit md: padding: CardContent's default md:pt-0 left the heading on the card's edge. */}
           <CardContent className="flex flex-col gap-4 p-5 md:p-6 md:pt-6">
             <section className="flex flex-col gap-4">

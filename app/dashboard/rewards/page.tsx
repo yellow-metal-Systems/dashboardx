@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { StatStrip, StatTile } from "@/components/stat-tile";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -68,20 +69,12 @@ export default async function RewardsPage({ searchParams }: { searchParams: { q?
       </div>
 
       {totals && (
-        <Card>
-          <CardContent className={cn("flex flex-col divide-y divide-outline-variant", PAD)}>
-            {[
-              ["To approve", totals.toApprove],
-              ["To pay", totals.owed],
-              ["Paid this financial year", totals.paidThisFy],
-            ].map(([label, value]) => (
-              <div key={label as string} className="flex items-baseline justify-between gap-4 py-2 first:pt-0 last:pb-0">
-                <span className="text-sm text-on-surface-variant">{label}</span>
-                <span className="text-heading-sm tabular-nums text-on-surface">{formatInr(value as number)}</span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        // The same strip as Overview and Leads.
+        <StatStrip className="lg:grid-cols-3">
+          <StatTile label="To approve" value={formatInr(totals.toApprove)} />
+          <StatTile label="To pay" value={formatInr(totals.owed)} />
+          <StatTile label="Paid this financial year" value={formatInr(totals.paidThisFy)} />
+        </StatStrip>
       )}
 
       {editRules && (

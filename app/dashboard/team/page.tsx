@@ -25,9 +25,13 @@ export default async function TeamPage() {
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-heading-lg text-on-surface">Team</h1>
+          <h1 className="text-heading-lg text-on-surface">
+            Team <span className="ml-2 text-heading-md font-medium tabular-nums text-on-surface-variant">{members.length}</span>
+          </h1>
           <p className="mt-1 text-sm text-on-surface-variant">
-            Who can sign in to LeadDesk and what their role allows · {members.filter((m) => m.isActive).length} active
+            Who can sign in to LeadDesk and what their role allows
+            {/* Only worth saying when someone is turned off. */}
+            {members.some((m) => !m.isActive) && ` · ${members.filter((m) => m.isActive).length} active`}
           </p>
         </div>
         <InviteMemberDialog />

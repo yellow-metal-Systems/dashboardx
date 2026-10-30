@@ -47,10 +47,10 @@ export default async function EmailPage({ params }: { params: { id: string } }) 
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
       <div className="flex items-center gap-2">
         <SidebarTrigger />
+        <Link href="/dashboard/emails" className="inline-flex items-center gap-1 text-sm text-on-surface-variant hover:underline">
+          <ChevronLeft className="size-4" aria-hidden="true" /> Sent emails
+        </Link>
       </div>
-      <Link href="/dashboard/emails" className="flex w-fit items-center gap-1 text-sm text-on-surface-variant hover:underline">
-        <ChevronLeft className="size-4" aria-hidden="true" /> Sent emails
-      </Link>
 
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-3">

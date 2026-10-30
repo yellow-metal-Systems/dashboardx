@@ -2,7 +2,7 @@ import { TrendingDown, TrendingUp } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { StatTile } from "@/components/stat-tile";
+import { StatStrip, StatTile } from "@/components/stat-tile";
 import { cn } from "@/lib/utils";
 import { LEAD_STATUSES, statusLabel, type LeadStatus } from "@/lib/leads";
 import { getOverviewStats } from "@/lib/leads-repo";
@@ -42,7 +42,7 @@ export default async function OverviewPage() {
         <p className="mt-1 text-sm text-on-surface-variant">All time · trend vs prior 30 days</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <StatStrip className="lg:grid-cols-4">
         <StatTile
           label="Total leads"
           value={s.totalLeads}
@@ -83,7 +83,7 @@ export default async function OverviewPage() {
           suffix="%"
           note={`${s.disbursed} disbursed`}
         />
-      </div>
+      </StatStrip>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <Card>

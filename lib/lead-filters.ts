@@ -160,17 +160,21 @@ export function leadMetrics(leads: Lead[]): LeadMetrics {
 }
 
 /**
- * The same three numbers for the window just before `range`, equally long, so a
- * card can say "↗ 20%". Null for all time, which has no window before it.
+ * The same three numbers for the window before `range`, so a card can say
+ * "↗ 20%": yesterday up to this time of day for "today", otherwise the equally
+ * long window just before. Null for all time, which has no window before it.
  */
 export function previousWindowMetrics(leads: Lead[], range: TimeRange, now = new Date()): LeadMetrics | null {
   const start = rangeStart(range, now);
   if (!start) return null;
-  const prevStart = new Date(start.getTime() - (now.getTime() - start.getTime()));
+  const [from, to] =
+    range === "today"
+      ? [new Date(start.getTime() - DAY_MS), new Date(now.getTime() - DAY_MS)]
+      : [new Date(start.getTime() - (now.getTime() - start.getTime())), start];
   return leadMetrics(
     leads.filter((l) => {
       const t = new Date(l.createdAt);
-      return t >= prevStart && t < start;
+      return t >= from && t < to;
     })
   );
 }

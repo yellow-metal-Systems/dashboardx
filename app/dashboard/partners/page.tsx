@@ -70,11 +70,11 @@ export default async function PartnersPage({ searchParams }: { searchParams: { t
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-heading-lg text-on-surface">Partners</h1>
-          <p className="mt-1 text-sm text-on-surface-variant">
-            Lead generators and organisations who send leads through LeadBridge
-            {partners && ` · ${partners.length} total`}
-          </p>
+          <h1 className="text-heading-lg text-on-surface">
+            Partners
+            {partners && <span className="ml-2 text-heading-md font-medium tabular-nums text-on-surface-variant">{partners.length}</span>}
+          </h1>
+          <p className="mt-1 text-sm text-on-surface-variant">Lead generators and organisations who send leads through LeadBridge</p>
         </div>
         <AddPartnerDialog />
       </div>
