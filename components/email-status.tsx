@@ -7,7 +7,7 @@ const STATUS: Record<string, { label: string; variant: BadgeProps["variant"] }> 
 };
 
 /** An email_messages status as a badge, for the Sent emails pages. */
-export function EmailStatus({ status }: { status: string }) {
+export function EmailStatus({ status, className }: { status: string; className?: string }) {
   const s = STATUS[status] ?? { label: status, variant: "grey" as const };
-  return <Badge variant={s.variant}>{s.label}</Badge>;
+  return <Badge variant={s.variant} className={className}>{s.label}</Badge>;
 }
