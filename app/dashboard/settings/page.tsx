@@ -13,6 +13,8 @@ import { integrationStatus } from "@/lib/settings/integrations";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Settings" };
+
 // Settings: every member sees My account; the other sections follow permissions,
 // so nobody is shown a section they could not act on.
 
@@ -60,7 +62,7 @@ export default async function SettingsPage() {
             <Row label="Role">{ROLE_LABELS[access.role]}</Row>
           </dl>
           <div className="border-t border-outline-variant pt-6">
-            <h2 className="mb-4 text-sm font-bold text-on-surface">Change password</h2>
+            <h3 className="mb-4 text-sm font-bold text-on-surface">Change password</h3>
             <ChangePasswordForm email={access.email} />
           </div>
         </CardContent>
@@ -97,9 +99,9 @@ export default async function SettingsPage() {
             <CardTitle>Integrations</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-3">
-            <section className="rounded-xl border border-outline-variant p-4">
+            <section className="rounded-lg border border-outline-variant p-4">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <h2 className="text-sm font-bold text-on-surface">Loan Managers App (LMS)</h2>
+                <h3 className="text-sm font-bold text-on-surface">Loan Managers App (LMS)</h3>
                 {status.lms.awaitingReview > 0 ? (
                   <Badge variant="pending">Needs review</Badge>
                 ) : status.lms.lastReceivedAt ? (
@@ -113,7 +115,7 @@ export default async function SettingsPage() {
                 <Row label="Last 7 days">{status.lms.lastWeek}</Row>
                 <Row label="Waiting to match">
                   {status.lms.awaitingReview > 0 ? (
-                    <Link href="/dashboard/leads/lms-review" className="text-link hover:underline">
+                    <Link href="/dashboard/leads/lms-review" className="text-link underline underline-offset-4 hover:text-link-hover">
                       {status.lms.awaitingReview}
                     </Link>
                   ) : (
@@ -123,15 +125,15 @@ export default async function SettingsPage() {
               </dl>
             </section>
 
-            <section className="rounded-xl border border-outline-variant p-4">
+            <section className="rounded-lg border border-outline-variant p-4">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <h2 className="text-sm font-bold text-on-surface">AarthikLabs (ONDC)</h2>
+                <h3 className="text-sm font-bold text-on-surface">AarthikLabs (ONDC)</h3>
                 {!status.aarthik ? (
                   <Badge variant="grey">Can&apos;t check</Badge>
                 ) : status.aarthik.healthy ? (
                   <Badge variant="success">Working</Badge>
                 ) : (
-                  <Badge variant="pending">Problem</Badge>
+                  <Badge variant="destructive">Problem</Badge>
                 )}
               </div>
               {status.aarthik ? (
@@ -145,9 +147,9 @@ export default async function SettingsPage() {
               )}
             </section>
 
-            <section className="rounded-xl border border-outline-variant p-4">
+            <section className="rounded-lg border border-outline-variant p-4">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <h2 className="text-sm font-bold text-on-surface">Partner API</h2>
+                <h3 className="text-sm font-bold text-on-surface">Partner API</h3>
                 <Badge variant={status.apiKeys.active > 0 ? "success" : "grey"}>
                   {status.apiKeys.active > 0 ? "In use" : "No keys"}
                 </Badge>
@@ -158,7 +160,7 @@ export default async function SettingsPage() {
               </dl>
               <p className="mt-3 text-xs text-on-surface-variant">
                 Keys are issued and revoked on each partner&apos;s page in{" "}
-                <Link href="/dashboard/partners" className="text-link hover:underline">Partners</Link>.
+                <Link href="/dashboard/partners" className="text-link underline underline-offset-4 hover:text-link-hover">Partners</Link>.
               </p>
             </section>
           </CardContent>

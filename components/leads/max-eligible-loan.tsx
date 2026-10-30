@@ -7,7 +7,7 @@ function Field({ label, children }: Field) {
   return (
     <div className="flex flex-col gap-0">
       <dt className="text-paragraph-md text-info-label">{label}</dt>
-      <dd className="text-[18px] font-bold leading-6 text-on-surface">{children}</dd>
+      <dd className="text-label-lg tabular-nums text-on-surface">{children}</dd>
     </div>
   );
 }
@@ -36,16 +36,12 @@ export async function MaxEligibleLoan({
           <dl className="mt-3 grid gap-4 sm:grid-cols-2">
             {gold.maxEligibleBullet68 !== null && (
               <Field label="Bullet plan, 68% LTV">
-                <span className="text-lg font-semibold">
-                  {formatInr(gold.maxEligibleBullet68)}
-                </span>
+                {formatInr(gold.maxEligibleBullet68)}
               </Field>
             )}
             {gold.maxEligibleMonthly75 !== null && (
               <Field label="Monthly plan, 75% LTV">
-                <span className="text-lg font-semibold">
-                  {formatInr(gold.maxEligibleMonthly75)}
-                </span>
+                {formatInr(gold.maxEligibleMonthly75)}
               </Field>
             )}
           </dl>
@@ -68,7 +64,7 @@ export async function MaxEligibleLoan({
 
 export function MaxEligibleLoanSkeleton() {
   return (
-    <div className="mt-2 animate-pulse rounded-lg bg-surface-container-low p-4">
+    <div className="mt-2 motion-safe:animate-pulse rounded-lg bg-surface-container-low p-4">
       <p className="text-label-sm uppercase tracking-widest text-label">
         Maximum eligible loan
       </p>

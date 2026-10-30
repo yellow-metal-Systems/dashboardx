@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,13 +9,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ApproveReward, MarkPaid, RejectReward, RevealDetails } from "@/components/rewards/reward-controls";
 import { RewardPill } from "@/components/rewards/reward-pill";
 import { requirePermission } from "@/lib/auth/session";
-import { formatDate, formatDateTime, formatInr, statusLabel } from "@/lib/leads";
+import { formatDate, formatDateTime, formatInr, statusBadgeClass, statusLabel } from "@/lib/leads";
 import { getPartnerRewardStatement, payoutDateFor, type StatementReward } from "@/lib/partners/rewards";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-const PAD = "p-5 md:p-6";
+export const metadata = { title: "Rewards statement" };
+
+const PAD = "p-6 md:p-9";
 const monthName = (d: Date) => new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric", timeZone: "UTC" }).format(d);
 const iso = (d: Date) => d.toISOString();
 
@@ -53,13 +55,13 @@ export default async function PartnerRewardsPage({ params }: { params: { partner
       <div className="flex items-center gap-2">
         <SidebarTrigger />
         <Link href="/dashboard/rewards" className="inline-flex items-center gap-1 text-sm text-on-surface-variant hover:underline">
-          <ArrowLeft className="size-4" aria-hidden="true" /> Rewards
+          <ChevronLeft className="size-4" aria-hidden="true" /> Rewards
         </Link>
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-heading-lg text-on-surface">{partner.orgName}</h1>
         <Badge variant="grey">{partner.type === "ORGANISATION" ? "Organisation" : "Individual"}</Badge>
-        <Link href={`/dashboard/partners/${partner.id}`} className="text-sm text-link hover:underline">Partner details</Link>
+        <Link href={`/dashboard/partners/${partner.id}`} className="text-sm text-link underline underline-offset-4 hover:text-link-hover">Partner details</Link>
       </div>
 
       {admin && (
@@ -106,7 +108,7 @@ export default async function PartnerRewardsPage({ params }: { params: { partner
         <CardContent className={cn("flex flex-col gap-4", PAD)}>
           <h2 className="text-heading-sm text-on-surface">Leads from {partner.orgName}</h2>
           {leads.length === 0 ? (
-            <p className="text-sm text-on-surface-variant">No leads yet.</p>
+            <p className="py-10 text-center text-sm text-on-surface-variant">No leads yet.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -122,11 +124,13 @@ export default async function PartnerRewardsPage({ params }: { params: { partner
               <TableBody>
                 {leads.map((l) => (
                   <TableRow key={l.id} data-lead={l.id}>
-                    <TableCell className="font-medium">
+                    <TableCell>
                       <Link href={`/dashboard/leads/${l.id}`} className="hover:underline">{l.name}</Link>
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">{statusLabel(l.status)}</TableCell>
-                    <TableCell className="whitespace-nowrap">{formatDate(iso(l.createdAt))}</TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      <Badge className={cn("border-transparent", statusBadgeClass(l.status))}>{statusLabel(l.status)}</Badge>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap tabular-nums font-semibold text-on-surface-variant">{formatDate(iso(l.createdAt))}</TableCell>
                     <TableCell className="whitespace-nowrap tabular-nums">
                       {l.disbursementDate ? formatDate(iso(l.disbursementDate)) : "—"}
                       {admin && l.disbursementAmount ? <span className="block text-xs text-on-surface-variant">{formatInr(Number(l.disbursementAmount))}</span> : null}

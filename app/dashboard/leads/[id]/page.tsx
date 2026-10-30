@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ChevronLeft, ExternalLink } from "lucide-react";
 
 import { LeadStatusSelect } from "@/components/leads/lead-status-select";
 import { MaxEligibleLoan, MaxEligibleLoanSkeleton } from "@/components/leads/max-eligible-loan";
@@ -25,6 +25,8 @@ import { staffAccess } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Lead" };
+
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 className="text-label-sm uppercase tracking-widest text-label">{children}</h2>;
 }
@@ -33,7 +35,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return (
     <div className="flex flex-col gap-0">
       <dt className="text-paragraph-md text-info-label">{label}</dt>
-      <dd className="text-[18px] font-bold leading-6 text-on-surface">{children}</dd>
+      <dd className="text-label-lg tabular-nums text-on-surface">{children}</dd>
     </div>
   );
 }
@@ -69,20 +71,9 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
       <div className="flex items-center gap-3">
         <SidebarTrigger />
-        <Link
-          href="/dashboard"
-          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container"
-          aria-label="Back to leads"
-        >
-          <ArrowLeft className="h-4 w-4" />
+        <Link href="/dashboard" className="inline-flex items-center gap-1 text-sm text-on-surface-variant hover:underline">
+          <ChevronLeft className="size-4" aria-hidden="true" /> Leads
         </Link>
-        <nav aria-label="Breadcrumb" className="text-xs text-on-surface-variant">
-          <Link href="/dashboard" className="hover:underline">
-            Leads
-          </Link>
-          <span className="mx-1.5">/</span>
-          <span className="font-medium text-on-surface">{leadRef(lead)}</span>
-        </nav>
       </div>
 
       <Card className="max-w-4xl">
@@ -97,7 +88,7 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
                 </Badge>
               </h1>
               <p className="mt-1 text-sm text-on-surface-variant">
-                Submitted {formatDateTime(lead.createdAt)} by {submitter}
+                <span className="font-semibold text-on-surface">{leadRef(lead)}</span> · Submitted {formatDateTime(lead.createdAt)} by {submitter}
               </p>
             </div>
             <div className="flex flex-col gap-2 md:w-56">
@@ -137,7 +128,7 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
               {lead.dob && <Field label="Date of birth">{formatDate(lead.dob)}</Field>}
               <Field label="Source">
                 {lead.partner ? (
-                  <Link href={`/dashboard/partners/${lead.partner.id}`} className="underline-offset-4 hover:underline">
+                  <Link href={`/dashboard/partners/${lead.partner.id}`} className="underline underline-offset-4">
                     {lead.partner.orgName}
                   </Link>
                 ) : (
@@ -160,7 +151,7 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="flex flex-col gap-3 rounded-lg bg-surface-container-low p-4" data-requested>
                 <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Requested</p>
-                <p className="text-heading-lg text-on-surface">
+                <p className="text-heading-lg tabular-nums text-on-surface">
                   {lead.loanAmountEstimated && lead.goldGrams !== null && requestedAmount !== null
                     ? `${lead.goldGrams} g gold, estimated ${formatInr(requestedAmount)}`
                     : requestedAmount !== null
@@ -181,9 +172,9 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
                       href={lead.kfsReference}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-sm text-primary underline-offset-4 hover:underline"
+                      className="inline-flex items-center gap-1 text-sm font-semibold text-link underline underline-offset-4 hover:text-link-hover"
                     >
-                      Open KFS <ExternalLink className="h-3.5 w-3.5" />
+                      Open KFS <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                     </a>
                   ) : (
                     <p className="font-mono text-xs text-on-surface-variant">KFS {lead.kfsReference}</p>
@@ -194,7 +185,7 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
                 <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Actual</p>
                 {lead.disbursementAmount !== null ? (
                   <>
-                    <p className="text-heading-lg text-on-surface">{formatInr(lead.disbursementAmount)}</p>
+                    <p className="text-heading-lg tabular-nums text-on-surface">{formatInr(lead.disbursementAmount)}</p>
                     {actualPlan && <p className="text-sm text-on-surface">{actualPlan}</p>}
                     <p className="text-xs text-on-surface-variant">
                       {lead.disbursementDate && `Disbursed ${formatDate(lead.disbursementDate)}`}

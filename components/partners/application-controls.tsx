@@ -37,9 +37,13 @@ function Submit({ idle, busy, variant = "dark" }: { idle: string; busy: string; 
 }
 
 function Result({ state }: { state: ApplicationFormState }) {
-  if (state.error) return <p role="alert" className="text-sm font-medium text-error">{state.error}</p>;
-  if (state.message) return <p role="status" className="text-sm text-on-surface">{state.message}</p>;
-  return null;
+  return (
+    <>
+      {state.error && <p role="alert" className="text-sm font-medium text-error">{state.error}</p>}
+      {/* Always mounted, so screen readers announce the message when it appears. */}
+      <p role="status" className={state.message ? "text-sm text-on-surface" : "sr-only"}>{state.message}</p>
+    </>
+  );
 }
 
 function RateFields({ inputs, values }: { inputs: RateInput[]; values: Rates }) {

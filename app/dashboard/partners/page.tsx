@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Partners" };
+
 const STATUS_LABEL: Record<string, string> = { invited: "Invited", active: "Active", disabled: "Turned off" };
 const APPLICATION_LABEL = APPLICATION_STATUS_LABELS;
 /** The column after "Applied", by tab: what the admin is waiting on, or who reviewed it. */
@@ -119,19 +121,19 @@ export default async function PartnersPage({ searchParams }: { searchParams: { t
                 <TableBody>
                   {applications.map((a) => (
                     <TableRow key={a.id} className="relative">
-                      <TableCell className="font-medium text-on-surface">
+                      <TableCell className="text-on-surface">
                         {/* The whole row opens the application, where every action lives. */}
                         <Link href={`/dashboard/partners/applications/${a.id}`} className="after:absolute after:inset-0 hover:underline">
                           {a.companyName ?? a.name}
                         </Link>
-                        <span className="block text-xs font-normal text-on-surface-variant">
+                        <span className="block text-xs font-semibold tabular-nums text-on-surface-variant">
                           {a.companyName ? `${a.name} · ` : ""}
                           {a.mobile}
                         </span>
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">{a.applicantType === "COMPANY" ? "Company · DSA" : "Individual · BC"}</TableCell>
-                      <TableCell>{a.town}</TableCell>
-                      <TableCell className="whitespace-nowrap">{formatDateTime(a.createdAt.toISOString())}</TableCell>
+                      <TableCell className="whitespace-nowrap font-semibold text-on-surface-variant">{a.applicantType === "COMPANY" ? "Company · DSA" : "Individual · BC"}</TableCell>
+                      <TableCell className="font-semibold text-on-surface-variant">{a.town}</TableCell>
+                      <TableCell className="whitespace-nowrap tabular-nums font-semibold text-on-surface-variant">{formatDateTime(a.createdAt.toISOString())}</TableCell>
                       {appStatus === "AGREEMENT_SENT" && (
                         <TableCell className="whitespace-nowrap">
                           {a.linkExpiresAt && a.linkExpiresAt <= now ? (
@@ -142,7 +144,7 @@ export default async function PartnersPage({ searchParams }: { searchParams: { t
                         </TableCell>
                       )}
                       {appStatus === "SIGNED" && (
-                        <TableCell className="whitespace-nowrap">{a.signedAt && formatDateTime(a.signedAt.toISOString())}</TableCell>
+                        <TableCell className="whitespace-nowrap tabular-nums font-semibold text-on-surface-variant">{a.signedAt && formatDateTime(a.signedAt.toISOString())}</TableCell>
                       )}
                       {(appStatus === "APPROVED" || appStatus === "REJECTED") && (
                         <TableCell className="text-sm">
@@ -172,29 +174,29 @@ export default async function PartnersPage({ searchParams }: { searchParams: { t
                     <TableHead>Partner</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Users</TableHead>
+                    <TableHead className="text-right">Users</TableHead>
                     <TableHead className="text-right">Leads</TableHead>
-                    <TableHead>API keys</TableHead>
+                    <TableHead className="text-right">API keys</TableHead>
                     <TableHead>Added</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {partners!.map((p) => (
                     <TableRow key={p.id} className="relative">
-                      <TableCell className="whitespace-nowrap font-medium text-on-surface">
+                      <TableCell className="whitespace-nowrap text-on-surface">
                         <Link href={`/dashboard/partners/${p.id}`} className="after:absolute after:inset-0 hover:underline">
                           {p.orgName}
                         </Link>
-                        <span className="block text-xs text-on-surface-variant">{p.contactEmail}</span>
+                        <span className="block text-xs font-semibold text-on-surface-variant">{p.contactEmail}</span>
                       </TableCell>
-                      <TableCell>{p.type === "ORGANISATION" ? "Organisation" : "Individual"}{p.isOndc ? " · ONDC" : ""}</TableCell>
+                      <TableCell className="font-semibold text-on-surface-variant">{p.type === "ORGANISATION" ? "Organisation" : "Individual"}{p.isOndc ? " · ONDC" : ""}</TableCell>
                       <TableCell>
                         <Badge className={cn("border-transparent", PARTNER_STATUS_BADGE_CLASSES[p.status])}>{STATUS_LABEL[p.status] ?? p.status}</Badge>
                       </TableCell>
-                      <TableCell>{p.users.length}</TableCell>
+                      <TableCell className="text-right tabular-nums">{p.users.length}</TableCell>
                       <TableCell className="text-right tabular-nums">{p._count.leads}</TableCell>
-                      <TableCell>{p.apiKeys.filter((k) => !k.revokedAt).length || "—"}</TableCell>
-                      <TableCell className="whitespace-nowrap">{formatDate(p.createdAt.toISOString())}</TableCell>
+                      <TableCell className="text-right tabular-nums">{p.apiKeys.filter((k) => !k.revokedAt).length || "—"}</TableCell>
+                      <TableCell className="whitespace-nowrap tabular-nums font-semibold text-on-surface-variant">{formatDate(p.createdAt.toISOString())}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

@@ -17,6 +17,8 @@ import { formatDateTime } from "@/lib/leads";
 // access to LeadDesk; links open in a new tab.
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Email" };
+
 /** The http(s) links in an email body, in order, without repeats. esc() writes &amp; &quot; &#39; into hrefs. */
 function linksIn(html: string): string[] {
   const unescape = (s: string) => s.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
@@ -47,7 +49,7 @@ export default async function EmailPage({ params }: { params: { id: string } }) 
         <SidebarTrigger />
       </div>
       <Link href="/dashboard/emails" className="flex w-fit items-center gap-1 text-sm text-on-surface-variant hover:underline">
-        <ChevronLeft className="size-4" /> Sent emails
+        <ChevronLeft className="size-4" aria-hidden="true" /> Sent emails
       </Link>
 
       <div className="flex flex-col gap-2">
@@ -60,7 +62,7 @@ export default async function EmailPage({ params }: { params: { id: string } }) 
           {email.applicationId && (
             <>
               {" · "}
-              <Link href={`/dashboard/partners/applications/${email.applicationId}`} className="font-semibold text-link hover:underline">
+              <Link href={`/dashboard/partners/applications/${email.applicationId}`} className="font-semibold text-link underline underline-offset-4 hover:text-link-hover">
                 Open the application
               </Link>
             </>

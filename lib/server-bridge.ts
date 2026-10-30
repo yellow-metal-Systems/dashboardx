@@ -91,7 +91,8 @@ export async function fetchIntegrationHealth(): Promise<IntegrationHealth | null
     const res = await fetch(`${SERVER_BASE_URL}/api/internal/integration-health`, {
       headers: { "x-api-key": INTERNAL_API_KEY },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      cache: "no-store",
+      // Asked by the banner on every page and every 30s poll; once per 30s is plenty.
+      next: { revalidate: 30 },
     });
     if (!res.ok) return null;
 

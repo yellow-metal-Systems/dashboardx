@@ -5,6 +5,8 @@ import { staffAccess } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Leads" };
+
 export default async function DashboardPage() {
   const [access, leads, partners, lmsToMatch, branchNames] = await Promise.all([
     staffAccess(),

@@ -34,6 +34,8 @@ type Props = {
   onConfirm: (details: DisbursementInput) => void;
 };
 
+type FieldKey = "amount" | "date" | "tenure" | "plan" | "rate";
+
 function todayIso(): string {
   // Local date, because the branch manager is recording what happened today in
   // their own timezone, not a UTC instant.
@@ -58,34 +60,44 @@ export function DisbursementDialog({ open, leadName, isAarthik, onCancel, onConf
   const [tenure, setTenure] = useState("12");
   const [plan, setPlan] = useState<"BULLET" | "MONTHLY" | "">("");
   const [rate, setRate] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  // Which field the error is about, so that field is marked invalid and focused.
+  const [error, setError] = useState<{ field: FieldKey; message: string } | null>(null);
+
+  function fail(field: FieldKey, message: string) {
+    setError({ field, message });
+    document.getElementById(`disbursed-${field}`)?.focus();
+  }
+
+  // aria-invalid + aria-describedby for the field the error is about.
+  const invalid = (field: FieldKey) =>
+    error?.field === field ? ({ "aria-invalid": true, "aria-describedby": "disbursed-error" } as const) : {};
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
 
     const parsedAmount = Number(amount.replace(/[,\s₹]/g, ""));
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      setError("Enter the amount actually disbursed.");
+      fail("amount", "Enter the amount actually disbursed.");
       return;
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      setError("Enter the disbursement date.");
+      fail("date", "Enter the disbursement date.");
       return;
     }
 
     const parsedTenure = tenure.trim() === "" ? undefined : Number(tenure);
     if (parsedTenure !== undefined && (!Number.isInteger(parsedTenure) || parsedTenure <= 0)) {
-      setError("Tenure must be a whole number of months.");
+      fail("tenure", "Tenure must be a whole number of months.");
       return;
     }
 
     if (!plan) {
-      setError("Choose the plan the loan was given on.");
+      fail("plan", "Choose the plan the loan was given on.");
       return;
     }
     const parsedRate = rate.trim() === "" ? undefined : Number(rate);
     if (parsedRate !== undefined && (!Number.isFinite(parsedRate) || parsedRate <= 0 || parsedRate > 100)) {
-      setError("Rate must be a percentage per year, e.g. 18.96.");
+      fail("rate", "Rate must be a percentage per year, e.g. 18.96.");
       return;
     }
 
@@ -126,6 +138,7 @@ export function DisbursementDialog({ open, leadName, isAarthik, onCancel, onConf
                   onChange={(e) => setAmount(e.target.value)}
                   autoFocus
                   required
+                  {...invalid("amount")}
                 />
               </FieldContent>
             </Field>
@@ -134,7 +147,7 @@ export function DisbursementDialog({ open, leadName, isAarthik, onCancel, onConf
               <FieldLabel htmlFor="disbursed-plan">Plan</FieldLabel>
               <FieldContent>
                 <Select value={plan} onValueChange={(v) => setPlan(v as "BULLET" | "MONTHLY")}>
-                  <SelectTrigger id="disbursed-plan">
+                  <SelectTrigger id="disbursed-plan" {...invalid("plan")}>
                     <SelectValue placeholder="Choose a plan" />
                   </SelectTrigger>
                   <SelectContent>
@@ -154,6 +167,7 @@ export function DisbursementDialog({ open, leadName, isAarthik, onCancel, onConf
                   placeholder="From the rate table"
                   value={rate}
                   onChange={(e) => setRate(e.target.value)}
+                  {...invalid("rate")}
                 />
               </FieldContent>
             </Field>
@@ -167,6 +181,7 @@ export function DisbursementDialog({ open, leadName, isAarthik, onCancel, onConf
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                   required
+                  {...invalid("date")}
                 />
               </FieldContent>
             </Field>
@@ -179,6 +194,7 @@ export function DisbursementDialog({ open, leadName, isAarthik, onCancel, onConf
                   inputMode="numeric"
                   value={tenure}
                   onChange={(e) => setTenure(e.target.value)}
+                  {...invalid("tenure")}
                 />
               </FieldContent>
             </Field>
@@ -197,8 +213,8 @@ export function DisbursementDialog({ open, leadName, isAarthik, onCancel, onConf
           </FieldGroup>
 
           {error && (
-            <p role="alert" className="mt-4 text-sm font-medium text-error">
-              {error}
+            <p id="disbursed-error" role="alert" className="mt-4 text-sm font-medium text-error">
+              {error.message}
             </p>
           )}
 

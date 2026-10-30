@@ -26,6 +26,8 @@ import { cn } from "@/lib/utils";
 // countersigning needs agreements.countersign (admins).
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Partner application" };
+
 const STATUS_BADGE: Record<ApplicationStatus, BadgeProps["variant"]> = {
   PENDING: "pending",
   AGREEMENT_SENT: "grey",
@@ -102,10 +104,10 @@ function PdfLinks({ label, href }: { label: string; href: string }) {
   return (
     <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
       <span className="w-40 text-on-surface-variant">{label}</span>
-      <a href={href} target="_blank" rel="noopener" className="font-semibold text-link hover:underline">
+      <a href={href} target="_blank" rel="noopener" className="font-semibold text-link underline underline-offset-4 hover:text-link-hover">
         View<span className="sr-only"> {label.toLowerCase()}</span>
       </a>
-      <a href={download} className="font-semibold text-link hover:underline">
+      <a href={download} className="font-semibold text-link underline underline-offset-4 hover:text-link-hover">
         Download<span className="sr-only"> {label.toLowerCase()}</span>
       </a>
     </p>
@@ -148,7 +150,7 @@ export default async function ApplicationPage({ params }: { params: { id: string
         href={`/dashboard/partners?tab=applications&status=${status}`}
         className="flex w-fit items-center gap-1 text-sm text-on-surface-variant hover:underline"
       >
-        <ChevronLeft className="size-4" /> Applications
+        <ChevronLeft className="size-4" aria-hidden="true" /> Applications
       </Link>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -218,7 +220,7 @@ export default async function ApplicationPage({ params }: { params: { id: string
                 emailMode() === "log" && (
                   <p className="text-sm text-on-surface-variant">
                     Demo mode: emails are saved, not sent. The signing link is in{" "}
-                    <Link href="/dashboard/emails" className="font-semibold text-link hover:underline">
+                    <Link href="/dashboard/emails" className="font-semibold text-link underline underline-offset-4 hover:text-link-hover">
                       Sent emails
                     </Link>
                     .
@@ -290,7 +292,7 @@ export default async function ApplicationPage({ params }: { params: { id: string
               ))}
 
             {status === "APPROVED" && app.partnerId && (
-              <Link href={`/dashboard/partners/${app.partnerId}`} className="w-fit text-sm font-semibold text-link hover:underline">
+              <Link href={`/dashboard/partners/${app.partnerId}`} className="w-fit text-sm font-semibold text-link underline underline-offset-4 hover:text-link-hover">
                 Open the partner
               </Link>
             )}

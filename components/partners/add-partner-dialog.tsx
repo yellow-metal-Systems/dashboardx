@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Field, FieldContent, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { addPartnerAction, type FormState } from "@/lib/partners/actions";
-import { cn } from "@/lib/utils";
+import { SegmentedControl } from "@/components/segmented-control";
 import { CopyField } from "./copy-field";
 
 function Submit() {
@@ -62,20 +62,17 @@ function AddPartnerForm({ onDone }: { onDone: () => void }) {
         ) : (
           <form action={action}>
             <FieldGroup>
-              <div className="grid grid-cols-2 gap-1 rounded-full bg-surface-container-low p-1" role="radiogroup" aria-label="Partner type">
-                {(["INDIVIDUAL", "ORGANISATION"] as const).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    role="radio"
-                    aria-checked={type === t}
-                    onClick={() => setType(t)}
-                    className={cn("h-9 rounded-full text-sm font-bold", type === t ? "bg-raised shadow-e1" : "text-on-surface-variant")}
-                  >
-                    {t === "INDIVIDUAL" ? "Individual" : "Organisation"}
-                  </button>
-                ))}
-              </div>
+              <SegmentedControl
+                label="Partner type"
+                options={[
+                  { value: "INDIVIDUAL", label: "Individual" },
+                  { value: "ORGANISATION", label: "Organisation" },
+                ]}
+                value={type}
+                onChange={setType}
+                className="grid grid-cols-2"
+                itemClassName="h-9"
+              />
               <input type="hidden" name="type" value={type} />
               {type === "ORGANISATION" && (
                 <Field>

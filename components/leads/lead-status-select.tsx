@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 
 import { updateLeadStatus } from "@/app/dashboard/actions";
 import {
@@ -20,6 +20,50 @@ import {
   type LeadStatus,
 } from "@/lib/leads";
 import { DisbursementDialog, type DisbursementInput } from "@/components/leads/disbursement-dialog";
+
+/**
+ * The status pill with its dropdown, shared by the leads table and the lead page.
+ * A final status (Disbursed, Rejected) is always locked.
+ */
+export function StatusSelect({
+  value,
+  onChange,
+  disabled,
+  leadName,
+  className,
+  children,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  disabled: boolean;
+  leadName: string;
+  className?: string;
+  /** Extra marks inside the pill, before the arrow. */
+  children?: ReactNode;
+}) {
+  const known = parseLeadStatus(value);
+  const locked = known !== null && isTerminalStatus(known);
+  return (
+    <Select value={value} onValueChange={onChange} disabled={disabled || locked}>
+      <SelectTrigger
+        aria-label={`Status for ${leadName}`}
+        // "!" because tailwind-merge does not know the custom shadow-* names, and a
+        // final (disabled) status should read at full strength, not faded.
+        className={cn("!rounded-full border-transparent !shadow-none disabled:opacity-100", statusBadgeClass(value), className)}
+      >
+        <SelectValue>{statusLabel(value)}</SelectValue>
+        {children}
+      </SelectTrigger>
+      <SelectContent>
+        {LEAD_STATUSES.map((s) => (
+          <SelectItem key={s} value={s}>
+            {statusLabel(s)}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
 
 type Props = {
   leadId: string;
@@ -77,23 +121,13 @@ export function LeadStatusSelect({ leadId, leadName, status, isAarthik, canUpdat
 
   return (
     <div className="flex flex-col gap-2">
-      <Select value={value} onValueChange={change} disabled={!canUpdate || isPending || locked}>
-        <SelectTrigger
-          aria-label={`Status for ${leadName}`}
-          // "!" because tailwind-merge does not know the custom shadow-* names, and a
-          // final (disabled) status should read at full strength, not faded.
-          className={cn("h-9 !rounded-full border-transparent !shadow-none disabled:opacity-100", statusBadgeClass(value), className)}
-        >
-          <SelectValue>{statusLabel(value)}</SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          {LEAD_STATUSES.map((s) => (
-            <SelectItem key={s} value={s}>
-              {statusLabel(s)}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <StatusSelect
+        value={value}
+        onChange={change}
+        disabled={!canUpdate || isPending}
+        leadName={leadName}
+        className={cn("h-9", className)}
+      />
 
       {isPending && (
         <p role="status" className="text-xs text-on-surface-variant">

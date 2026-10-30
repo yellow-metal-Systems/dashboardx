@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +10,8 @@ import { formatDate, formatDateTime, formatInr, statusLabel } from "@/lib/leads"
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+
+export const metadata = { title: "LMS updates to match" };
 
 const EVENT_LABEL = { DISBURSED: "Disbursed", REJECTED: "Rejected", CANCELLED: "Cancelled" } as const;
 
@@ -36,7 +38,7 @@ export default async function LmsReviewPage() {
       <div className="flex items-center gap-2">
         <SidebarTrigger />
         <Link href="/dashboard" className="inline-flex items-center gap-1 text-sm text-on-surface-variant hover:underline">
-          <ArrowLeft className="size-4" aria-hidden="true" /> Leads
+          <ChevronLeft className="size-4" aria-hidden="true" /> Leads
         </Link>
       </div>
       <div>
@@ -53,7 +55,7 @@ export default async function LmsReviewPage() {
       ) : (
         events.map((e) => (
           <Card key={e.id} data-lms-event={e.eventId}>
-            <CardContent className="flex flex-col gap-3 p-5 md:p-6">
+            <CardContent className="flex flex-col gap-3 p-6 md:p-9">
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <Badge variant={e.event === "DISBURSED" ? "success" : "destructive"}>{EVENT_LABEL[e.event]}</Badge>
                 <Badge variant="grey">{e.outcome === "AMBIGUOUS" ? "Several leads match" : "No lead found"}</Badge>
