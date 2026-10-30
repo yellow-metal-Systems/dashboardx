@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
+import { ArrowRightLeft } from "lucide-react";
 
 import { updateLeadStatus } from "@/app/dashboard/actions";
 import {
@@ -32,6 +33,7 @@ export function StatusSelect({
   leadName,
   className,
   children,
+  triggerLabel,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -40,6 +42,8 @@ export function StatusSelect({
   className?: string;
   /** Extra marks inside the pill, before the arrow. */
   children?: ReactNode;
+  /** Shown on the trigger instead of the current status (the lead page's "Change status" button). */
+  triggerLabel?: ReactNode;
 }) {
   const known = parseLeadStatus(value);
   const locked = known !== null && isTerminalStatus(known);
@@ -51,7 +55,7 @@ export function StatusSelect({
         // final (disabled) status should read at full strength, not faded.
         className={cn("!rounded-full border-transparent !shadow-none disabled:opacity-100", statusBadgeClass(value), className)}
       >
-        <SelectValue>{statusLabel(value)}</SelectValue>
+        {triggerLabel ?? <SelectValue>{statusLabel(value)}</SelectValue>}
         {children}
       </SelectTrigger>
       <SelectContent>
@@ -73,9 +77,11 @@ type Props = {
   /** False for read-only roles (customer support): the status shows but can't be changed. */
   canUpdate: boolean;
   className?: string;
+  /** The lead page: a dark "Change status" button; the current status is the tag by the name. */
+  asButton?: boolean;
 };
 
-export function LeadStatusSelect({ leadId, leadName, status, isAarthik, canUpdate, className }: Props) {
+export function LeadStatusSelect({ leadId, leadName, status, isAarthik, canUpdate, className, asButton }: Props) {
   const [value, setValue] = useState<string>(status);
   const [error, setError] = useState<string | null>(null);
   const [askingDisbursement, setAskingDisbursement] = useState(false);
@@ -126,7 +132,21 @@ export function LeadStatusSelect({ leadId, leadName, status, isAarthik, canUpdat
         onChange={change}
         disabled={!canUpdate || isPending}
         leadName={leadName}
-        className={cn("h-9", className)}
+        className={cn(
+          "h-9",
+          // The app's dark button (Button variant="dark"), over the status colours.
+          asButton &&
+            "!rounded-lg !border-transparent bg-gradient-to-b from-[#2b2b29] to-[#161615] px-3 font-semibold !text-white !shadow-button hover:to-[#000000] disabled:!opacity-50",
+          className
+        )}
+        triggerLabel={
+          asButton ? (
+            // A div, not a span: the trigger line-clamps direct spans, which put the icon on its own line.
+            <div className="flex items-center gap-2 whitespace-nowrap">
+              <ArrowRightLeft className="size-4" aria-hidden="true" /> Change status
+            </div>
+          ) : undefined
+        }
       />
 
       {isPending && (
