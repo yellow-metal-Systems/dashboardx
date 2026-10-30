@@ -113,12 +113,18 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
                   {initials(lead.name)}
                 </span>
                 <div>
-                  <h1 className="flex flex-wrap items-center gap-2 text-heading-lg text-on-surface">
-                    {lead.name}
-                    <Badge variant={lead.isNewCustomer ? "success" : "pending"} dot={!lead.isNewCustomer} data-customer-tag>
+                  {/* The tag sits beside the heading, not in it: inside, it took the heading's size and weight. */}
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <h1 className="text-heading-lg text-on-surface">{lead.name}</h1>
+                    <Badge
+                      variant={lead.isNewCustomer ? "success" : "pending"}
+                      dot={!lead.isNewCustomer}
+                      className="text-xs font-semibold"
+                      data-customer-tag
+                    >
                       {customerTag(lead)}
                     </Badge>
-                  </h1>
+                  </div>
                   <p className="mt-1 text-sm text-on-surface-variant">
                     <span className="font-semibold text-on-surface">{leadRef(lead)}</span> · Submitted {formatDateTime(lead.createdAt)} by {submitter}
                   </p>
