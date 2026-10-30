@@ -2,12 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 
+import { EmailFrame } from "@/components/email-frame";
 import { EmailStatus } from "@/components/email-status";
 import { CopyField } from "@/components/partners/copy-field";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { requirePermission } from "@/lib/auth/session";
 import { emailMode } from "@/lib/email";
+import { linkName, shortPath } from "@/lib/email-links";
 import { getEmail } from "@/lib/email-log";
 import { formatDateTime } from "@/lib/leads";
 
@@ -16,6 +18,8 @@ import { formatDateTime } from "@/lib/leads";
 // body is our own template, still shown in a sandboxed frame: no scripts, no
 // access to LeadDesk; links open in a new tab.
 export const dynamic = "force-dynamic";
+
+export const metadata = { title: "Email" };
 
 /** The http(s) links in an email body, in order, without repeats. esc() writes &amp; &quot; &#39; into hrefs. */
 function linksIn(html: string): string[] {
@@ -45,22 +49,22 @@ export default async function EmailPage({ params }: { params: { id: string } }) 
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
       <div className="flex items-center gap-2">
         <SidebarTrigger />
+        <Link href="/dashboard/emails" className="inline-flex items-center gap-1 text-sm text-on-surface-variant hover:underline">
+          <ChevronLeft className="size-4" aria-hidden="true" /> Sent emails
+        </Link>
       </div>
-      <Link href="/dashboard/emails" className="flex w-fit items-center gap-1 text-sm text-on-surface-variant hover:underline">
-        <ChevronLeft className="size-4" /> Sent emails
-      </Link>
 
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-heading-lg text-on-surface">{email.subject}</h1>
-          <EmailStatus status={email.status} />
+          <EmailStatus status={email.status} className="text-xs font-semibold" />
         </div>
         <p className="text-sm text-on-surface-variant">
           To {email.toAddress} · {formatDateTime(email.createdAt.toISOString())}
           {email.applicationId && (
             <>
               {" · "}
-              <Link href={`/dashboard/partners/applications/${email.applicationId}`} className="font-semibold text-link hover:underline">
+              <Link href={`/dashboard/partners/applications/${email.applicationId}`} className="font-semibold text-link underline underline-offset-4 hover:text-link-hover">
                 Open the application
               </Link>
             </>
@@ -70,22 +74,24 @@ export default async function EmailPage({ params }: { params: { id: string } }) 
       {email.error && <p role="alert" className="text-sm font-medium text-error">{email.error}</p>}
 
       {body ? (
-        <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
-          <iframe
-            title={`Email: ${email.subject}`}
-            sandbox="allow-popups allow-popups-to-escape-sandbox"
-            srcDoc={withNewTabLinks(body)}
-            className="h-[640px] w-full rounded-lg border border-outline-variant bg-white"
-          />
+        <div className="grid items-start gap-6 lg:grid-cols-[1fr_22rem]">
+          <EmailFrame title={`Email: ${email.subject}`} html={withNewTabLinks(body)} />
           {links.length > 0 && (
             <Card className="h-fit">
               <CardHeader>
                 <CardTitle>Links in this email</CardTitle>
                 <p className="text-sm text-on-surface-variant">Copy one to open it on a phone.</p>
               </CardHeader>
-              <CardContent className="flex flex-col gap-3">
+              <CardContent className="flex flex-col gap-4">
+                {/* Named from the path, so the names hold when the host changes. The "Link N" label stays: the E2E finds the signing link by it. */}
                 {links.map((href, i) => (
-                  <CopyField key={href} value={href} label={`Link ${i + 1} in this email`} />
+                  <div key={href} className="flex flex-col gap-1.5">
+                    <p className="flex items-baseline justify-between gap-2 text-xs">
+                      <span className="font-semibold text-on-surface">{linkName(href)}</span>
+                      <span className="truncate font-mono text-on-surface-variant">{shortPath(href)}</span>
+                    </p>
+                    <CopyField value={href} label={`Link ${i + 1} in this email`} />
+                  </div>
                 ))}
               </CardContent>
             </Card>

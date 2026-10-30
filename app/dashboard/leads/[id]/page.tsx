@@ -1,7 +1,22 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import {
+  Building2,
+  Cake,
+  ChevronLeft,
+  ExternalLink,
+  Hash,
+  Home,
+  Landmark,
+  Link2,
+  MapPin,
+  Phone,
+  Receipt,
+  UserRound,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 
 import { LeadStatusSelect } from "@/components/leads/lead-status-select";
 import { MaxEligibleLoan, MaxEligibleLoanSkeleton } from "@/components/leads/max-eligible-loan";
@@ -25,17 +40,27 @@ import { staffAccess } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Lead" };
+
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 className="text-label-sm uppercase tracking-widest text-label">{children}</h2>;
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+/** One borrower detail: an icon, the label, then the value (the reference's overview-card rows). */
+function Field({ label, icon: Icon, children }: { label: string; icon: LucideIcon; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-0">
-      <dt className="text-paragraph-md text-info-label">{label}</dt>
-      <dd className="text-[18px] font-bold leading-6 text-on-surface">{children}</dd>
+    <div className="flex items-start gap-3 border-b border-outline-variant/60 py-2.5">
+      <Icon className="mt-0.5 size-4 shrink-0 text-on-surface-variant" aria-hidden="true" />
+      <div className="flex min-w-0 flex-col gap-0">
+        <dt className="text-paragraph-md text-info-label">{label}</dt>
+        <dd className="text-label-lg tabular-nums text-on-surface">{children}</dd>
+      </div>
     </div>
   );
+}
+
+function initials(name: string): string {
+  return name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 }
 
 /** "Bullet · 68% LTV · 22.2% p.a.", leaving out whatever is missing. */
@@ -69,36 +94,39 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
       <div className="flex items-center gap-3">
         <SidebarTrigger />
-        <Link
-          href="/dashboard"
-          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container"
-          aria-label="Back to leads"
-        >
-          <ArrowLeft className="h-4 w-4" />
+        <Link href="/dashboard" className="inline-flex items-center gap-1 text-sm text-on-surface-variant hover:underline">
+          <ChevronLeft className="size-4" aria-hidden="true" /> Leads
         </Link>
-        <nav aria-label="Breadcrumb" className="text-xs text-on-surface-variant">
-          <Link href="/dashboard" className="hover:underline">
-            Leads
-          </Link>
-          <span className="mx-1.5">/</span>
-          <span className="font-medium text-on-surface">{leadRef(lead)}</span>
-        </nav>
       </div>
 
       <Card className="max-w-4xl">
         <CardContent className="flex flex-col gap-8 pt-6 md:pt-9">
           {/* Header: name + tag, who sent it, and the status control. */}
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div>
-              <h1 className="flex flex-wrap items-center gap-2 text-heading-lg text-on-surface">
-                {lead.name}
-                <Badge variant={lead.isNewCustomer ? "success" : "pending"} dot={!lead.isNewCustomer} data-customer-tag>
-                  {customerTag(lead)}
-                </Badge>
-              </h1>
-              <p className="mt-1 text-sm text-on-surface-variant">
-                Submitted {formatDateTime(lead.createdAt)} by {submitter}
-              </p>
+            <div className="flex items-start gap-4">
+              <span
+                aria-hidden="true"
+                className="flex size-12 shrink-0 items-center justify-center rounded-full bg-surface-container-low text-base font-semibold text-on-surface"
+              >
+                {initials(lead.name)}
+              </span>
+              <div>
+                {/* The tag sits beside the heading, not in it: inside, it took the heading's size and weight. */}
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h1 className="text-heading-lg text-on-surface">{lead.name}</h1>
+                  <Badge
+                    variant={lead.isNewCustomer ? "success" : "pending"}
+                    dot={!lead.isNewCustomer}
+                    className="text-xs font-semibold"
+                    data-customer-tag
+                  >
+                    {customerTag(lead)}
+                  </Badge>
+                </div>
+                <p className="mt-1 text-sm text-on-surface-variant">
+                  <span className="font-semibold text-on-surface">{leadRef(lead)}</span> · Submitted {formatDateTime(lead.createdAt)} by {submitter}
+                </p>
+              </div>
             </div>
             <div className="flex flex-col gap-2 md:w-56">
               <LeadStatusSelect
@@ -120,35 +148,35 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
 
           <section className="flex flex-col gap-4">
             <SectionTitle>Borrower</SectionTitle>
-            <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <Field label="Mobile number">{lead.mobile}</Field>
-              <Field label="Pincode">{lead.pinCode}</Field>
-              <Field label="Branch">
+            <dl className="grid gap-x-8 sm:grid-cols-2">
+              <Field label="Mobile number" icon={Phone}>{lead.mobile}</Field>
+              <Field label="Pincode" icon={MapPin}>{lead.pinCode}</Field>
+              <Field label="Branch" icon={Building2}>
                 {lead.branch
                   ? `${lead.branch.name}${lead.branch.state ? `, ${lead.branch.state}` : ""}`
                   : "To be assigned"}
               </Field>
-              {lead.address && <Field label="Address">{lead.address}</Field>}
+              {lead.address && <Field label="Address" icon={Home}>{lead.address}</Field>}
               {lead.gstin && (
-                <Field label="GSTIN">
+                <Field label="GSTIN" icon={Receipt}>
                   <span className="font-mono text-xs">{lead.gstin}</span>
                 </Field>
               )}
-              {lead.dob && <Field label="Date of birth">{formatDate(lead.dob)}</Field>}
-              <Field label="Source">
+              {lead.dob && <Field label="Date of birth" icon={Cake}>{formatDate(lead.dob)}</Field>}
+              <Field label="Source" icon={Users}>
                 {lead.partner ? (
-                  <Link href={`/dashboard/partners/${lead.partner.id}`} className="underline-offset-4 hover:underline">
+                  <Link href={`/dashboard/partners/${lead.partner.id}`} className="underline underline-offset-4">
                     {lead.partner.orgName}
                   </Link>
                 ) : (
                   SOURCE_LABELS[lead.source]
                 )}
               </Field>
-              {lead.externalRef && <Field label="Their reference">{lead.externalRef}</Field>}
-              {lead.agentRef && <Field label="Their agent">{lead.agentRef}</Field>}
-              {lead.lspName && <Field label="LSP">{lead.lspName}</Field>}
+              {lead.externalRef && <Field label="Their reference" icon={Hash}>{lead.externalRef}</Field>}
+              {lead.agentRef && <Field label="Their agent" icon={UserRound}>{lead.agentRef}</Field>}
+              {lead.lspName && <Field label="LSP" icon={Landmark}>{lead.lspName}</Field>}
               {lead.ondcTransactionId && (
-                <Field label="ONDC transaction">
+                <Field label="ONDC transaction" icon={Link2}>
                   <span className="select-all break-all font-mono text-xs">{lead.ondcTransactionId}</span>
                 </Field>
               )}
@@ -158,15 +186,14 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
           <section className="flex flex-col gap-4">
             <SectionTitle>Requested vs actual</SectionTitle>
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="flex flex-col gap-3 rounded-lg bg-surface-container-low p-4" data-requested>
-                <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Requested</p>
-                <p className="text-heading-lg text-on-surface">
-                  {lead.loanAmountEstimated && lead.goldGrams !== null && requestedAmount !== null
-                    ? `${lead.goldGrams} g gold, estimated ${formatInr(requestedAmount)}`
-                    : requestedAmount !== null
-                      ? formatInr(requestedAmount)
-                      : "—"}
+              <div className="flex flex-col gap-1.5 rounded-lg bg-surface-container-low p-4 md:p-5" data-requested>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Requested</p>
+                <p className="text-heading-lg tabular-nums text-on-surface">
+                  {requestedAmount !== null ? formatInr(requestedAmount) : "—"}
                 </p>
+                {lead.loanAmountEstimated && lead.goldGrams !== null && requestedAmount !== null && (
+                  <p className="text-sm text-on-surface-variant">Estimated from {lead.goldGrams} g gold</p>
+                )}
                 {requestedPlan && <p className="text-sm text-on-surface">{requestedPlan}</p>}
                 {isAarthik && (
                   <p className="text-xs text-on-surface-variant">
@@ -181,20 +208,20 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
                       href={lead.kfsReference}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-sm text-primary underline-offset-4 hover:underline"
+                      className="inline-flex items-center gap-1 text-sm font-semibold text-link underline underline-offset-4 hover:text-link-hover"
                     >
-                      Open KFS <ExternalLink className="h-3.5 w-3.5" />
+                      Open KFS <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                     </a>
                   ) : (
                     <p className="font-mono text-xs text-on-surface-variant">KFS {lead.kfsReference}</p>
                   ))}
               </div>
 
-              <div className="flex flex-col gap-3 rounded-lg bg-surface-container-low p-4" data-actual>
-                <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Actual</p>
+              <div className="flex flex-col gap-1.5 rounded-lg bg-surface-container-low p-4 md:p-5" data-actual>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Actual</p>
                 {lead.disbursementAmount !== null ? (
                   <>
-                    <p className="text-heading-lg text-on-surface">{formatInr(lead.disbursementAmount)}</p>
+                    <p className="text-heading-lg tabular-nums text-on-surface">{formatInr(lead.disbursementAmount)}</p>
                     {actualPlan && <p className="text-sm text-on-surface">{actualPlan}</p>}
                     <p className="text-xs text-on-surface-variant">
                       {lead.disbursementDate && `Disbursed ${formatDate(lead.disbursementDate)}`}
@@ -219,7 +246,7 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
             {activities.length === 0 ? (
               <p className="text-sm text-on-surface-variant">No activity recorded.</p>
             ) : (
-              <ol className="flex flex-col gap-2 border-l-2 border-outline-variant pl-4">
+              <ol className="flex flex-col gap-4 border-l-2 border-outline-variant pl-4">
                 {activities.map((a) => {
                   const by = a.actor ? actorLabel(a.actor, actorNames) : null;
                   // shortcut: matches serverx's "Status changed X → Disbursed" text; if that wording
@@ -229,21 +256,23 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
                       ? `Disbursed ${formatInr(lead.disbursementAmount)}`
                       : a.message;
                   return (
-                    <li key={a.id} className="relative text-sm text-on-surface">
+                    <li key={a.id} className="relative min-w-0 text-sm leading-5 text-on-surface">
                       <span aria-hidden="true" className="absolute -left-[21px] top-1.5 size-2 rounded-full bg-outline" />
-                      <time dateTime={a.createdAt} className="text-on-surface-variant">
+                      <time dateTime={a.createdAt} className="block text-xs text-on-surface-variant">
                         {activityTime.format(new Date(a.createdAt))}
                       </time>
-                      {" · "}
-                      {message}
-                      {/* Skipped when the message already names them ("…by Asha Rao"). */}
-                      {by && !message.includes(by) && <span className="text-on-surface-variant"> by {by}</span>}
+                      <p className="mt-0.5 break-words">
+                        {message}
+                        {/* Skipped when the message already names them ("…by Asha Rao"). */}
+                        {by && !message.includes(by) && <span className="text-on-surface-variant"> by {by}</span>}
+                      </p>
                     </li>
                   );
                 })}
               </ol>
             )}
           </section>
+
 
           {failedUpdates.length > 0 && (
             <section className="flex flex-col gap-2 rounded-lg bg-error-container p-4 text-on-error-container">

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { EMPTY_FILTERS, applyLeadFilters, countActiveFilters } from "@/lib/lead-filters";
+import { EMPTY_FILTERS, applyLeadFilters, countActiveFilters, previousWindowMetrics } from "@/lib/lead-filters";
 import { LEADS } from "./fixtures";
 
 const all = LEADS;
@@ -97,5 +97,27 @@ describe("countActiveFilters", () => {
     expect(
       countActiveFilters({ ...EMPTY_FILTERS, status: "DISBURSED", newCustomer: "no" })
     ).toBe(2);
+  });
+});
+
+describe("KPI trend helpers", () => {
+  const now = new Date(2026, 9, 30, 12, 0); // 30 Oct 2026, noon local
+  const at = (daysAgo: number, extra: Partial<(typeof LEADS)[number]> = {}) => ({
+    ...LEADS[0],
+    id: `L${daysAgo}-${Math.random()}`,
+    createdAt: new Date(now.getTime() - daysAgo * 86_400_000).toISOString(),
+    ...extra,
+  });
+
+  it("compares a range with the equally long window just before it", () => {
+    const leads = [at(1), at(2, { status: "DISBURSED" }), at(8, { isNewCustomer: true }), at(9, { isNewCustomer: false }), at(20)];
+    expect(previousWindowMetrics(leads, "week", now)).toEqual({ total: 2, newCustomers: 1, disbursed: 0 });
+    expect(previousWindowMetrics(leads, "all", now)).toBeNull();
+  });
+
+  it("compares today with yesterday up to the same time, not with last night", () => {
+    const hoursAgo = (h: number) => ({ ...LEADS[0], id: `H${h}`, createdAt: new Date(now.getTime() - h * 3_600_000).toISOString() });
+    // now is noon: 26 h ago is 10 am yesterday (counts), 14 h ago is 10 pm yesterday (does not).
+    expect(previousWindowMetrics([hoursAgo(26), hoursAgo(14)], "today", now)?.total).toBe(1);
   });
 });

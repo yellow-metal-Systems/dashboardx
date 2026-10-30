@@ -7,11 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { CreateApiKey, GstinRequiredToggle, ResendInvite, RevokeApiKey, TogglePartner } from "@/components/partners/partner-controls";
 import { requirePermission } from "@/lib/auth/session";
-import { PARTNER_STATUS_BADGE_CLASSES, formatDate, formatInr, statusLabel } from "@/lib/leads";
+import { PARTNER_STATUS_BADGE_CLASSES, formatDate, formatInr, statusBadgeClass, statusLabel } from "@/lib/leads";
 import { prisma } from "@/lib/prisma";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
+
+export const metadata = { title: "Partner" };
 
 const STATUS_LABEL: Record<string, string> = { invited: "Invited", active: "Active", disabled: "Turned off" };
 
@@ -39,10 +41,10 @@ export default async function PartnerPage({ params }: { params: { id: string } }
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
       <div className="flex items-center gap-2">
         <SidebarTrigger />
+        <Link href="/dashboard/partners" className="inline-flex items-center gap-1 text-sm text-on-surface-variant hover:underline">
+          <ChevronLeft className="size-4" aria-hidden="true" /> All partners
+        </Link>
       </div>
-      <Link href="/dashboard/partners" className="flex w-fit items-center gap-1 text-sm text-on-surface-variant hover:underline">
-        <ChevronLeft className="size-4" /> All partners
-      </Link>
 
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-heading-lg text-on-surface">{p.orgName}</h1>
@@ -90,7 +92,7 @@ export default async function PartnerPage({ params }: { params: { id: string } }
               <div><span className="block text-on-surface-variant">Paid</span><b>{formatInr(sum("PAID"))}</b></div>
               <p className="col-span-3 text-xs text-on-surface-variant">
                 {p.payoutDetails ? "PAN and bank details added." : "No PAN and bank details yet — they add them in the LeadBridge app."}{" "}
-                <Link href={`/dashboard/rewards/${p.id}`} className="font-bold text-link hover:underline">Open statement</Link>
+                <Link href={`/dashboard/rewards/${p.id}`} className="font-bold text-link underline underline-offset-4 hover:text-link-hover">Open statement</Link>
               </p>
             </CardContent>
           </Card>
@@ -101,19 +103,19 @@ export default async function PartnerPage({ params }: { params: { id: string } }
             <CardTitle>Leads</CardTitle>
             <p className="text-sm text-on-surface-variant">
               {p._count.leads} from this partner{p._count.leads > p.leads.length ? ` · latest ${p.leads.length}` : ""} ·{" "}
-              <Link href={`/dashboard/rewards/${p.id}`} className="text-link hover:underline">rewards by lead</Link>
+              <Link href={`/dashboard/rewards/${p.id}`} className="text-link underline underline-offset-4 hover:text-link-hover">rewards by lead</Link>
             </p>
           </CardHeader>
           <CardContent>
             {p.leads.length === 0 ? (
-              <p className="text-sm text-on-surface-variant">No leads yet.</p>
+              <p className="py-10 text-center text-sm text-on-surface-variant">No leads yet.</p>
             ) : (
               <ul className="flex flex-col divide-y divide-outline-variant text-sm">
                 {p.leads.map((l) => (
                   <li key={l.id} className="flex items-center justify-between gap-3 py-2">
                     <Link href={`/dashboard/leads/${l.id}`} className="font-medium hover:underline">{l.name}</Link>
                     <span className="flex items-center gap-3 text-on-surface-variant">
-                      <span>{statusLabel(l.status)}</span>
+                      <Badge className={cn("border-transparent", statusBadgeClass(l.status))}>{statusLabel(l.status)}</Badge>
                       <span className="tabular-nums">{formatDate(l.createdAt.toISOString())}</span>
                     </span>
                   </li>

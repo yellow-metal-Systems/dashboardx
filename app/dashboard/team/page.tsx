@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Team" };
+
 export default async function TeamPage() {
   const access = await requirePermission("team.manage");
   const { members, invites } = await listTeam();
@@ -23,9 +25,13 @@ export default async function TeamPage() {
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-heading-lg text-on-surface">Team</h1>
+          <h1 className="text-heading-lg text-on-surface">
+            Team <span className="ml-2 text-heading-md font-medium tabular-nums text-on-surface-variant">{members.length}</span>
+          </h1>
           <p className="mt-1 text-sm text-on-surface-variant">
-            Who can sign in to LeadDesk and what their role allows · {members.filter((m) => m.isActive).length} active
+            Who can sign in to LeadDesk and what their role allows
+            {/* Only worth saying when someone is turned off. */}
+            {members.some((m) => !m.isActive) && ` · ${members.filter((m) => m.isActive).length} active`}
           </p>
         </div>
         <InviteMemberDialog />
@@ -51,10 +57,10 @@ export default async function TeamPage() {
                 const self = m.id === access.userId;
                 return (
                   <TableRow key={m.id}>
-                    <TableCell className="font-medium text-on-surface">
+                    <TableCell className="text-on-surface">
                       {m.name}
                       {self && <span className="ml-1 text-xs text-on-surface-variant">(you)</span>}
-                      <span className="block text-xs font-normal text-on-surface-variant">{m.email}</span>
+                      <span className="block text-xs font-semibold text-on-surface-variant">{m.email}</span>
                     </TableCell>
                     <TableCell>
                       {/* The server refuses changing your own role or account; don't offer it. */}
@@ -65,7 +71,7 @@ export default async function TeamPage() {
                         {m.isActive ? "Active" : "Turned off"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">
+                    <TableCell className="whitespace-nowrap tabular-nums font-semibold text-on-surface-variant">
                       {m.lastLoginAt ? formatDateTime(m.lastLoginAt.toISOString()) : "Never"}
                     </TableCell>
                     <TableCell className="text-right">{!self && <MemberActive memberId={m.id} active={m.isActive} />}</TableCell>
@@ -97,12 +103,12 @@ export default async function TeamPage() {
               <TableBody>
                 {invites.map((i) => (
                   <TableRow key={i.id}>
-                    <TableCell className="font-medium text-on-surface">
+                    <TableCell className="text-on-surface">
                       {i.name}
-                      <span className="block text-xs font-normal text-on-surface-variant">{i.email}</span>
+                      <span className="block text-xs font-semibold text-on-surface-variant">{i.email}</span>
                     </TableCell>
-                    <TableCell>{ROLE_LABELS[i.role]}</TableCell>
-                    <TableCell className="whitespace-nowrap">{formatDate(i.expiresAt.toISOString())}</TableCell>
+                    <TableCell className="font-semibold text-on-surface-variant">{ROLE_LABELS[i.role]}</TableCell>
+                    <TableCell className="whitespace-nowrap tabular-nums font-semibold text-on-surface-variant">{formatDate(i.expiresAt.toISOString())}</TableCell>
                     <TableCell className="text-right"><RevokeInvite inviteId={i.id} /></TableCell>
                   </TableRow>
                 ))}

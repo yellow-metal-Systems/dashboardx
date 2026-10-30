@@ -10,7 +10,7 @@ import { findInvite } from "@/lib/team/team";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Join — YellowMetal LeadDesk",
+  title: "Join",
 };
 
 // Public on purpose: the middleware only guards /dashboard, and the token is the credential.
@@ -22,7 +22,7 @@ export default async function JoinPage({ params }: { params: { token: string } }
       <div className="w-full max-w-sm">
         <PreprodBanner className="mb-6 rounded-lg" />
         <div className="mb-8 text-center">
-          <Image src="/ym-logo.png" alt="YellowMetal" width={719} height={312} priority className="mx-auto h-auto w-44" />
+          <Image src="/ym-logo.png" alt="YellowMetal" width={719} height={312} sizes="176px" priority className="mx-auto h-auto w-44" />
           <p className="mt-3 text-xs font-semibold uppercase tracking-widest text-on-surface-variant">
             LeadDesk
           </p>

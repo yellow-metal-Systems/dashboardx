@@ -2,12 +2,15 @@ import { TrendingDown, TrendingUp } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { StatStrip, StatTile } from "@/components/stat-tile";
 import { cn } from "@/lib/utils";
 import { LEAD_STATUSES, statusLabel, type LeadStatus } from "@/lib/leads";
 import { getOverviewStats } from "@/lib/leads-repo";
 import { requirePermission } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
+
+export const metadata = { title: "Overview" };
 
 const STATUS_BAR_CLASSES: Record<LeadStatus, string> = {
   LEAD_CREATED: "bg-grey-solid",
@@ -19,31 +22,6 @@ const STATUS_BAR_CLASSES: Record<LeadStatus, string> = {
 
 function pct(part: number, whole: number): number {
   return whole === 0 ? 0 : Math.round((part / whole) * 100);
-}
-
-function StatTile({
-  label,
-  value,
-  suffix,
-  note,
-}: {
-  label: string;
-  value: number;
-  suffix?: string;
-  note: React.ReactNode;
-}) {
-  return (
-    <Card>
-      <CardContent className="flex flex-col gap-1 p-4 md:p-6">
-        <p className="text-xs text-on-surface-variant">{label}</p>
-        <p className="text-heading-xl tabular-nums text-on-surface">
-          {value}
-          {suffix}
-        </p>
-        <p className="text-xs text-on-surface-variant">{note}</p>
-      </CardContent>
-    </Card>
-  );
 }
 
 export default async function OverviewPage() {
@@ -61,10 +39,10 @@ export default async function OverviewPage() {
 
       <div>
         <h1 className="text-heading-lg text-on-surface">Overview</h1>
-        <p className="mt-1 text-sm text-on-surface-variant">Last 30 days</p>
+        <p className="mt-1 text-sm text-on-surface-variant">All time · trend vs prior 30 days</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <StatStrip className="lg:grid-cols-4">
         <StatTile
           label="Total leads"
           value={s.totalLeads}
@@ -105,12 +83,12 @@ export default async function OverviewPage() {
           suffix="%"
           note={`${s.disbursed} disbursed`}
         />
-      </div>
+      </StatStrip>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <Card>
           <CardContent className="flex flex-col gap-4 pt-6 md:pt-9">
-            <h2 className="text-sm font-semibold text-on-surface">Leads by status</h2>
+            <h2 className="text-heading-sm text-on-surface">Leads by status</h2>
             <ul className="flex flex-col gap-4">
               {LEAD_STATUSES.map((status) => {
                 const count = s.byStatus[status];
@@ -152,7 +130,7 @@ export default async function OverviewPage() {
 
         <Card>
           <CardContent className="flex flex-col gap-4 pt-6 md:pt-9">
-            <h2 className="text-sm font-semibold text-on-surface">
+            <h2 className="text-heading-sm text-on-surface">
               Top partners, last 30 days
             </h2>
             {s.topPartners.length === 0 ? (

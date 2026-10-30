@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Search, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,7 +42,7 @@ function FilterField({
     <div className={cn("flex flex-col gap-1", className)}>
       <label
         htmlFor={id}
-        className="text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant"
+        className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant"
       >
         {label}
       </label>
@@ -51,9 +51,9 @@ function FilterField({
   );
 }
 
-// Order per the 15 Oct standup: partner, status, amount, branch, then the date range.
+// Order per the 15 Oct standup: partner, status, amount, branch. The date range
+// is the Custom pill beside the time-range pills.
 export function LeadFilters({ filters, onChange, partners, branches }: Props) {
-  const [expanded, setExpanded] = useState(false);
   const [searching, setSearching] = useState(false);
   const active = countActiveFilters(filters);
 
@@ -161,17 +161,6 @@ export function LeadFilters({ filters, onChange, partners, branches }: Props) {
               <Search className="h-4 w-4" />
             </Button>
           )}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            aria-expanded={expanded}
-            aria-controls="more-filters"
-            onClick={() => setExpanded((v) => !v)}
-          >
-            Date range
-            <ChevronDown className={cn("ml-1 h-4 w-4 transition-transform", expanded && "rotate-180")} />
-          </Button>
           {active > 0 && (
             <Button
               type="button"
@@ -185,32 +174,6 @@ export function LeadFilters({ filters, onChange, partners, branches }: Props) {
           )}
         </div>
       </div>
-
-      {expanded && (
-        <div
-          id="more-filters"
-          className="flex flex-col gap-3 border-t border-outline-variant pt-3 md:flex-row md:flex-wrap md:items-end"
-        >
-          <FilterField id="f-from" label="From">
-            <Input
-              id="f-from"
-              type="date"
-              value={filters.createdFrom}
-              onChange={(e) => set("createdFrom", e.target.value)}
-              className="h-8 md:w-40"
-            />
-          </FilterField>
-          <FilterField id="f-to" label="To">
-            <Input
-              id="f-to"
-              type="date"
-              value={filters.createdTo}
-              onChange={(e) => set("createdTo", e.target.value)}
-              className="h-8 md:w-40"
-            />
-          </FilterField>
-        </div>
-      )}
     </div>
   );
 }

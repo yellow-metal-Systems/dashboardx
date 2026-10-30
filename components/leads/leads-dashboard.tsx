@@ -1,46 +1,34 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 
 import { updateLeadStatus } from "@/app/dashboard/actions";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { LeadFilters } from "@/components/leads/lead-filters";
+import { LeadRow } from "@/components/leads/lead-row";
+import { SegmentedControl } from "@/components/segmented-control";
+import { StatStrip, StatTile } from "@/components/stat-tile";
 import {
   DisbursementDialog,
   type DisbursementInput,
 } from "@/components/leads/disbursement-dialog";
 import { cn } from "@/lib/utils";
 import {
-  LEAD_STATUSES,
-  isTerminalStatus,
   parseLeadStatus,
-  statusBadgeClass,
-  statusLabel,
-  formatDateTime,
-  formatInr,
   isNewLead,
   NEW_LEAD_MINUTES,
-  customerTag,
   type Lead,
   type LeadPartner,
   type LeadStatus,
@@ -53,6 +41,7 @@ import {
   applyLeadFilters,
   applyTimeRange,
   leadMetrics,
+  previousWindowMetrics,
   type LeadFilters as Filters,
   type TimeRange,
 } from "@/lib/lead-filters";
@@ -67,10 +56,20 @@ type Props = {
   canUpdate: boolean;
 };
 
+type Range = TimeRange | "custom";
+
+const RANGE_OPTIONS: { value: Range; label: string }[] = [
+  ...TIME_RANGES.map((r) => ({ value: r, label: TIME_RANGE_LABELS[r] })),
+  { value: "custom", label: "Custom" },
+];
+
 export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 0, canUpdate }: Props) {
   const [leads, setLeads] = useState<Lead[]>(initialLeads);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
-  const [range, setRange] = useState<TimeRange>("all");
+  const [range, setRange] = useState<Range>("all");
+  // From/To belong to the range pills, not the filter bar: one date control, so a
+  // range and a separate date filter can no longer silently empty the table together.
+  const [custom, setCustom] = useState({ from: "", to: "" });
   const [saveError, setSaveError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [disbursingId, setDisbursingId] = useState<string | null>(null);
@@ -81,9 +80,9 @@ export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 
   // re-run on every mutation and fight the optimistic update).
   const pendingRef = useRef<string | null>(null);
   pendingRef.current = pendingId;
-
-  // Standup 2026-10-15: a lead opens as a full page, not a side panel.
-  const router = useRouter();
+  // Read by commitStatus, so it stays one stable function for the memoised rows.
+  const leadsRef = useRef(leads);
+  leadsRef.current = leads;
 
   // Leads also arrive from AarthikLabs posting to the partner API, and nothing
   // tells this browser about those. Poll while the tab is visible, and pause
@@ -91,15 +90,6 @@ export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 
   const { isRefreshing, refreshNow } = useLiveRefresh({
     enabled: pendingId === null,
   });
-
-  // Drives the "N new in the last 45 min" count. Purely cosmetic, so a slow tick is fine.
-  const [clock, setClock] = useState(() => new Date());
-  useEffect(() => {
-    const id = window.setInterval(() => setClock(new Date()), 10_000);
-    return () => window.clearInterval(id);
-  }, []);
-  // Leads under 45 minutes old get the green "New" pill; it drops off by itself.
-  const newCount = leads.filter((l) => isNewLead(l.createdAt, clock)).length;
 
   // Absorb a newer server snapshot.
   //
@@ -123,66 +113,73 @@ export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 
   // Optimistic, but scoped to the one row. The previous version snapshotted the
   // ENTIRE leads array and restored it on failure, so a failed change also
   // discarded any concurrent edit to a different lead.
-  function applyOptimistic(id: string, status: LeadStatus) {
-    const updatedAt = new Date().toISOString();
+  const setOne = useCallback((id: string, status: string, updatedAt: string) => {
     setLeads((prev) =>
       prev.map((lead) => (lead.id === id ? { ...lead, status, updatedAt } : lead))
     );
-  }
+  }, []);
 
-  function revertOne(id: string, status: string, updatedAt: string) {
-    setLeads((prev) =>
-      prev.map((lead) => (lead.id === id ? { ...lead, status, updatedAt } : lead))
-    );
-  }
+  const commitStatus = useCallback(
+    (id: string, status: LeadStatus, disbursement?: DisbursementInput) => {
+      const lead = leadsRef.current.find((l) => l.id === id);
+      if (!lead) return;
+      const previousStatus = lead.status;
+      const previousUpdatedAt = lead.updatedAt;
 
-  function commitStatus(id: string, status: LeadStatus, disbursement?: DisbursementInput) {
-    const lead = leads.find((l) => l.id === id);
-    if (!lead) return;
-    const previousStatus = lead.status;
-    const previousUpdatedAt = lead.updatedAt;
+      setSaveError(null);
+      setPendingId(id);
+      setOne(id, status, new Date().toISOString());
 
-    setSaveError(null);
-    setPendingId(id);
-    applyOptimistic(id, status);
-
-    startTransition(async () => {
-      try {
-        const result = await updateLeadStatus(id, status, disbursement);
-        if (!result.ok) {
-          revertOne(id, previousStatus, previousUpdatedAt);
-          setSaveError(result.error);
+      startTransition(async () => {
+        try {
+          const result = await updateLeadStatus(id, status, disbursement);
+          if (!result.ok) {
+            setOne(id, previousStatus, previousUpdatedAt);
+            setSaveError(result.error);
+          }
+        } catch {
+          setOne(id, previousStatus, previousUpdatedAt);
+          setSaveError("Could not save the status change. Please try again.");
+        } finally {
+          setPendingId(null);
         }
-      } catch {
-        revertOne(id, previousStatus, previousUpdatedAt);
-        setSaveError("Could not save the status change. Please try again.");
-      } finally {
-        setPendingId(null);
+      });
+    },
+    [setOne]
+  );
+
+  const updateStatus = useCallback(
+    (id: string, next: string) => {
+      const status = parseLeadStatus(next);
+      if (!status) return;
+      // DISBURSED carries money figures into the AarthikLabs webhook, so collect
+      // them instead of sending nulls.
+      if (status === "DISBURSED") {
+        setDisbursingId(id);
+        return;
       }
-    });
-  }
+      commitStatus(id, status);
+    },
+    [commitStatus]
+  );
 
-  function updateStatus(id: string, next: string) {
-    const status = parseLeadStatus(next);
-    if (!status) return;
-    // DISBURSED carries money figures into the AarthikLabs webhook, so collect
-    // them instead of sending nulls.
-    if (status === "DISBURSED") {
-      setDisbursingId(id);
-      return;
-    }
-    commitStatus(id, status);
-  }
-
-  // The timeline narrows both the cards and the table; the filters narrow the table further.
-  const rangedLeads = useMemo(() => applyTimeRange(leads, range, clock), [leads, range, clock]);
+  // The timeline narrows both the cards and the table; the filters narrow the table
+  // further. A rolling window is measured when the leads change (at least every 30s
+  // poll) rather than on a ticking clock, so the table does not re-render on a timer.
+  const rangedLeads = useMemo(
+    () =>
+      range === "custom"
+        ? applyLeadFilters(leads, { ...EMPTY_FILTERS, createdFrom: custom.from, createdTo: custom.to })
+        : applyTimeRange(leads, range),
+    [leads, range, custom]
+  );
   const stats = useMemo(() => leadMetrics(rangedLeads), [rangedLeads]);
+  const previous = useMemo(() => (range === "custom" ? null : previousWindowMetrics(leads, range)), [leads, range]);
 
   const filteredLeads = useMemo(
     () => applyLeadFilters(rangedLeads, filters),
     [rangedLeads, filters]
   );
-
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
@@ -192,12 +189,11 @@ export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 
 
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-on-surface-variant">
-            Internal
-          </p>
-          <h1 className="mt-1 text-heading-lg text-on-surface">Leads</h1>
+          <h1 className="text-heading-lg text-on-surface">
+            Leads <span className="ml-1 text-heading-md font-medium tabular-nums text-on-surface-variant">{leads.length}</span>
+          </h1>
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-on-surface-variant">
-            <span>
+            <span className="tabular-nums">
               {leads.length} total · {filteredLeads.length} shown
             </span>
             <button
@@ -218,55 +214,49 @@ export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 
                 </Badge>
               </Link>
             )}
-            <span aria-live="polite" className="inline-flex">
-              {newCount > 0 && (
-                <Badge variant="success" dot data-new-count>
-                  {newCount} new in the last {NEW_LEAD_MINUTES} min
-                </Badge>
-              )}
-            </span>
+            <NewLeadsBadge leads={leads} />
           </div>
         </div>
       </div>
 
       <div className="flex flex-col gap-3">
-        <div
-          role="radiogroup"
-          aria-label="Time range"
-          className="flex w-fit flex-wrap gap-1 rounded-full bg-surface-container-low p-1"
-        >
-          {TIME_RANGES.map((r) => (
-            <button
-              key={r}
-              type="button"
-              role="radio"
-              aria-checked={range === r}
-              onClick={() => setRange(r)}
-              className={cn(
-                "h-8 rounded-full px-3 text-sm font-bold",
-                range === r ? "bg-raised shadow-e1" : "text-on-surface-variant"
-              )}
-            >
-              {TIME_RANGE_LABELS[r]}
-            </button>
-          ))}
+        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
+          <SegmentedControl
+            label="Time range"
+            options={RANGE_OPTIONS}
+            value={range}
+            onChange={setRange}
+            className="w-fit flex-wrap"
+            itemClassName="h-8 px-3"
+          />
+          {range === "custom" && (
+            <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-on-surface-variant">
+              <label htmlFor="f-from">From</label>
+              <Input
+                id="f-from"
+                type="date"
+                value={custom.from}
+                onChange={(e) => setCustom((c) => ({ ...c, from: e.target.value }))}
+                className="h-8 w-40"
+              />
+              <label htmlFor="f-to">To</label>
+              <Input
+                id="f-to"
+                type="date"
+                value={custom.to}
+                onChange={(e) => setCustom((c) => ({ ...c, to: e.target.value }))}
+                className="h-8 w-40"
+              />
+            </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-3 gap-3 md:max-w-xl">
-          {[
-            ["Total leads", stats.total],
-            ["New", stats.newCustomers],
-            ["Disbursed", stats.disbursed],
-          ].map(([label, value]) => (
-            // Raised and brighter than the table below, so the eye lands on the numbers first.
-            <Card key={label} className="bg-raised">
-              <CardContent className="p-3 md:p-4">
-                <p className="text-xs font-medium text-on-surface-variant">{label}</p>
-                <p className="mt-1 text-heading-lg tabular-nums text-on-surface">{value}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {/* The same strip as Overview and Rewards; the note says how the range compares with the one before. */}
+        <StatStrip className="lg:grid-cols-3">
+          <StatTile label="Total leads" value={stats.total} note={trend(stats.total, previous?.total)} />
+          <StatTile label="New customers" value={stats.newCustomers} note={trend(stats.newCustomers, previous?.newCustomers)} />
+          <StatTile label="Disbursed" value={stats.disbursed} note={trend(stats.disbursed, previous?.disbursed)} />
+        </StatStrip>
       </div>
 
       <Card className="shadow-e1">
@@ -282,10 +272,6 @@ export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 
               {saveError}
             </p>
           )}
-
-          <p className="text-xs text-on-surface-variant">
-            Click a row for full details.
-          </p>
 
           {filteredLeads.length === 0 ? (
             <p className="py-10 text-center text-sm text-on-surface-variant">
@@ -304,95 +290,21 @@ export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 
                   <TableHead>Partner</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Submitted</TableHead>
+                  <TableHead className="w-10">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredLeads.map((lead) => {
-                  const amount = lead.loanAmount ?? lead.offerAmount;
-                  return (
-                    <TableRow
-                      key={lead.id}
-                      onClick={() => router.push(`/dashboard/leads/${lead.id}`)}
-                      className="cursor-pointer"
-                    >
-                      <TableCell className="whitespace-nowrap font-medium text-on-surface">
-                        <Link
-                          href={`/dashboard/leads/${lead.id}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="underline-offset-4 hover:underline focus-visible:outline-none focus-visible:underline"
-                        >
-                          {lead.name}
-                        </Link>
-                        <Badge
-                          // Amber, not grey: a duplicate is worth a look before anyone pays a reward twice.
-                          variant={lead.isNewCustomer ? "success" : "pending"}
-                          dot={!lead.isNewCustomer}
-                          className="ml-2 align-middle"
-                          data-customer-tag
-                        >
-                          {customerTag(lead)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{lead.mobile}</TableCell>
-                      <TableCell>{lead.pinCode}</TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {amount !== null ? formatInr(amount) : "—"}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {lead.partner?.orgName ??
-                          (lead.source === "AARTHIKLABS" ? (
-                            "ONDC"
-                          ) : (
-                            <span className="text-on-surface-variant">—</span>
-                          ))}
-                      </TableCell>
-                      <TableCell
-                        onClick={(e) => e.stopPropagation()}
-                        title={lead.lmsUpdatedAt ? `Updated by the LMS on ${formatDateTime(lead.lmsUpdatedAt)}` : undefined}
-                      >
-                        <Select
-                          value={lead.status}
-                          onValueChange={(value) => updateStatus(lead.id, value)}
-                          disabled={
-                            !canUpdate ||
-                            pendingId === lead.id ||
-                            (parseLeadStatus(lead.status) !== null &&
-                              isTerminalStatus(parseLeadStatus(lead.status)!))
-                          }
-                        >
-                          <SelectTrigger
-                            aria-label={`Status for ${lead.name}`}
-                            className={cn(
-                              "h-8 w-44 gap-1.5 !rounded-full border-transparent !shadow-none disabled:opacity-100",
-                              statusBadgeClass(lead.status)
-                            )}
-                          >
-                            <SelectValue>{statusLabel(lead.status)}</SelectValue>
-                            {/* The LMS mark sits inside the pill, beside the arrow, so the cell stays one line. */}
-                            {lead.lmsUpdatedAt && (
-                              <span
-                                className="ml-auto rounded-full bg-white/70 px-1.5 text-[10px] font-bold leading-4 tracking-wide"
-                                data-lms-tag
-                              >
-                                LMS
-                              </span>
-                            )}
-                          </SelectTrigger>
-                          <SelectContent>
-                            {LEAD_STATUSES.map((status) => (
-                              <SelectItem key={status} value={status}>
-                                {statusLabel(status)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap tabular-nums">
-                        {formatDateTime(lead.createdAt)}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {filteredLeads.map((lead) => (
+                  <LeadRow
+                    key={lead.id}
+                    lead={lead}
+                    canUpdate={canUpdate}
+                    pending={pendingId === lead.id}
+                    onStatusChange={updateStatus}
+                  />
+                ))}
               </TableBody>
             </Table>
           )}
@@ -413,5 +325,40 @@ export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 
         }}
       />
     </div>
+  );
+}
+
+/**
+ * "N new in the last 45 min". It owns the 10-second clock, so the tick re-renders
+ * only this badge, not the whole table. Leads under 45 minutes old get the green
+ * "New" pill; it drops off by itself. The live region stays mounted while empty.
+ */
+function NewLeadsBadge({ leads }: { leads: Lead[] }) {
+  const [clock, setClock] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setClock(new Date()), 10_000);
+    return () => window.clearInterval(id);
+  }, []);
+  const newCount = leads.filter((l) => isNewLead(l.createdAt, clock)).length;
+
+  return (
+    <span aria-live="polite" className="inline-flex">
+      {newCount > 0 && (
+        <Badge variant="success" dot data-new-count>
+          {newCount} new in the last {NEW_LEAD_MINUTES} min
+        </Badge>
+      )}
+    </span>
+  );
+}
+
+/** "↗ 20% vs the period before". Nothing without a period before, or when it was zero (a % of nothing says nothing). */
+function trend(value: number, before?: number) {
+  if (!before) return undefined;
+  const change = Math.round(((value - before) / before) * 100);
+  return (
+    <span className={cn("font-semibold", change >= 0 ? "text-on-success-soft" : "text-on-error-soft")}>
+      {change >= 0 ? "↗" : "↘"} {Math.abs(change)}% vs the period before
+    </span>
   );
 }

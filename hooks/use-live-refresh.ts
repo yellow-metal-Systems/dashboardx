@@ -26,8 +26,6 @@ type Options = {
 };
 
 export type LiveRefresh = {
-  /** When the server data was last known to be current. */
-  lastRefreshedAt: Date;
   /** True while a refresh is in flight. */
   isRefreshing: boolean;
   /** Refresh now. Safe to call from a button. */
@@ -36,17 +34,20 @@ export type LiveRefresh = {
 
 export function useLiveRefresh({ intervalMs = 30_000, enabled = true }: Options = {}): LiveRefresh {
   const router = useRouter();
-  const [lastRefreshedAt, setLastRefreshedAt] = useState(() => new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Held in a ref so changing it does not tear down and restart the interval.
   const enabledRef = useRef(enabled);
   enabledRef.current = enabled;
 
+  // When router.refresh() last ran, so returning to the tab refreshes once even
+  // though the browser fires both `focus` and `visibilitychange` for it.
+  const lastRefreshRef = useRef(0);
+
   const refreshNow = useCallback(() => {
     setIsRefreshing(true);
     router.refresh();
-    setLastRefreshedAt(new Date());
+    lastRefreshRef.current = Date.now();
     // router.refresh() gives no completion signal, so clear the indicator on a
     // short timer. It exists to show the click registered, not to gate anything.
     window.setTimeout(() => setIsRefreshing(false), 600);
@@ -59,7 +60,7 @@ export function useLiveRefresh({ intervalMs = 30_000, enabled = true }: Options 
       if (!enabledRef.current) return;
       if (document.visibilityState !== "visible") return;
       router.refresh();
-      setLastRefreshedAt(new Date());
+      lastRefreshRef.current = Date.now();
     }, intervalMs);
     return () => window.clearInterval(id);
   }, [router, intervalMs]);
@@ -70,8 +71,9 @@ export function useLiveRefresh({ intervalMs = 30_000, enabled = true }: Options 
     function onFocus() {
       if (!enabledRef.current) return;
       if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastRefreshRef.current < 5_000) return;
       router.refresh();
-      setLastRefreshedAt(new Date());
+      lastRefreshRef.current = Date.now();
     }
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onFocus);
@@ -81,15 +83,6 @@ export function useLiveRefresh({ intervalMs = 30_000, enabled = true }: Options 
     };
   }, [router]);
 
-  return { lastRefreshedAt, isRefreshing, refreshNow };
+  return { isRefreshing, refreshNow };
 }
 
-/** "just now" / "2m ago" — re-rendered by the caller's own tick. */
-export function formatAge(from: Date, now: Date = new Date()): string {
-  const seconds = Math.max(0, Math.round((now.getTime() - from.getTime()) / 1000));
-  if (seconds < 10) return "just now";
-  if (seconds < 60) return `${seconds}s ago`;
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  return `${Math.round(minutes / 60)}h ago`;
-}

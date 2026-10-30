@@ -67,9 +67,12 @@ export function CreateApiKey({ partnerId }: { partnerId: string }) {
   const [state, action] = useFormState<KeyFormState, FormData>(createApiKeyAction, { error: null });
   return (
     <div className="flex flex-col gap-2">
-      <form action={action} className="flex gap-2">
+      <form action={action} className="flex flex-wrap items-end gap-2">
         <input type="hidden" name="partnerId" value={partnerId} />
-        <Input name="label" placeholder="Key name, e.g. Production" aria-label="Key name" required className="max-w-xs" />
+        <label className="flex w-full max-w-xs flex-col gap-1">
+          <span className="text-xs font-bold text-on-surface-variant">Key name</span>
+          <Input name="label" placeholder="e.g. Production" required />
+        </label>
         <Pending idle="Create API key" busy="Creating…" variant="dark" />
       </form>
       {state.key && (

@@ -26,14 +26,17 @@ export function LmsResolveForm({ eventId, candidates }: { eventId: string; candi
       {candidates.length > 0 && (
         <div className="flex flex-wrap gap-2" role="group" aria-label="Leads with this mobile">
           {candidates.map((c) => (
-            <Button key={c.id} type="button" size="sm" variant={leadId === c.id ? "dark" : "outline"} onClick={() => setLeadId(c.id)}>
+            <Button key={c.id} type="button" size="sm" variant={leadId === c.id ? "dark" : "outline"} aria-pressed={leadId === c.id} onClick={() => setLeadId(c.id)}>
               {c.name} · {c.status}
             </Button>
           ))}
         </div>
       )}
-      <div className="flex flex-wrap items-center gap-2">
-        <Input name="leadId" value={leadId} onChange={(e) => setLeadId(e.target.value)} placeholder="YMLEAD0000012345" aria-label="Lead number" className="w-full font-mono sm:w-64" />
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="flex w-full flex-col gap-1 sm:w-64">
+          <span className="text-xs font-bold text-on-surface-variant">Lead number</span>
+          <Input name="leadId" value={leadId} onChange={(e) => setLeadId(e.target.value)} placeholder="YMLEAD0000012345" className="font-mono" />
+        </label>
         <Submit />
       </div>
       {state.error && <p role="alert" className="text-xs text-error">{state.error}</p>}

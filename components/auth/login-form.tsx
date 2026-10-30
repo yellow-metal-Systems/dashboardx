@@ -2,6 +2,7 @@
 
 // React 18 + Next 14: the hook is useFormState from react-dom. (useActionState is
 // the React 19 name for it and does not exist here.)
+import { useEffect, useRef } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 
 import { signIn, type LoginState } from "@/lib/auth/actions";
@@ -23,6 +24,15 @@ function SubmitButton() {
 
 export function LoginForm({ next }: { next: string }) {
   const [state, formAction] = useFormState<LoginState, FormData>(signIn, { error: null });
+  // The error is about the pair, not one field, so both are marked invalid and
+  // focus goes back to the email so the whole pair can be re-checked.
+  const emailRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (state.error) emailRef.current?.focus();
+  }, [state]);
+  const invalid = state.error
+    ? ({ "aria-invalid": true, "aria-describedby": "login-error" } as const)
+    : {};
 
   return (
     <Card>
@@ -39,6 +49,7 @@ export function LoginForm({ next }: { next: string }) {
               <FieldLabel htmlFor="email">Email</FieldLabel>
               <FieldContent>
                 <Input
+                  ref={emailRef}
                   id="email"
                   name="email"
                   type="email"
@@ -46,6 +57,7 @@ export function LoginForm({ next }: { next: string }) {
                   required
                   autoFocus
                   placeholder="you@yellowmetal.example"
+                  {...invalid}
                 />
               </FieldContent>
             </Field>
@@ -59,13 +71,14 @@ export function LoginForm({ next }: { next: string }) {
                   type="password"
                   autoComplete="current-password"
                   required
+                  {...invalid}
                 />
               </FieldContent>
             </Field>
           </FieldGroup>
 
           {state.error && (
-            <p role="alert" className="mt-4 text-sm font-medium text-error">
+            <p id="login-error" role="alert" className="mt-4 text-sm font-medium text-error">
               {state.error}
             </p>
           )}
