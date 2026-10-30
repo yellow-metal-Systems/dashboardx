@@ -3,12 +3,12 @@
 import { memo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ExternalLink, Hash, MoreHorizontal, Phone } from "lucide-react";
+import { ExternalLink, MoreHorizontal, Phone } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { StatusSelect } from "@/components/leads/lead-status-select";
-import { customerTag, formatDateTime, formatInr, leadRef, type Lead } from "@/lib/leads";
+import { customerTag, formatDateTime, formatInr, type Lead } from "@/lib/leads";
 
 type Props = {
   lead: Lead;
@@ -135,9 +135,6 @@ function RowMenu({ lead }: { lead: Lead }) {
         </Link>
         <button type="button" className={item} onClick={() => copy("Mobile", lead.mobile)}>
           <Phone className="size-4 text-on-surface-variant" aria-hidden="true" /> Copy mobile
-        </button>
-        <button type="button" className={item} onClick={() => copy("Reference", leadRef(lead))}>
-          <Hash className="size-4 text-on-surface-variant" aria-hidden="true" /> Copy reference
         </button>
       </div>
       <span role="status" className="sr-only">
