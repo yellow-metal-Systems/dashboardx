@@ -1,12 +1,12 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ExternalLink, MoreHorizontal, Phone } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { ActionsMenu } from "@/components/leads/actions-menu";
 import { StatusSelect } from "@/components/leads/lead-status-select";
 import { customerTag, formatDateTime, formatInr, type Lead } from "@/lib/leads";
 
@@ -78,14 +78,68 @@ export const LeadRow = memo(function LeadRow({ lead, canUpdate, pending, onStatu
         {formatDateTime(lead.createdAt)}
       </TableCell>
       <TableCell onClick={(e) => e.stopPropagation()} className="w-10 text-right">
-        <ActionsMenu
-          label={`Actions for ${lead.name}`}
-          actions={[
-            { kind: "link", label: "Open lead", icon: "open", href: `/dashboard/leads/${lead.id}` },
-            { kind: "copy", label: "Copy mobile", icon: "phone", text: lead.mobile, what: "Mobile" },
-          ]}
-        />
+        <RowMenu lead={lead} />
       </TableCell>
     </TableRow>
   );
 });
+
+/**
+ * The row's "…": quick actions that don't need the lead page. A native
+ * <details>, so it works with the keyboard; it closes on a click outside or Esc.
+ */
+function RowMenu({ lead }: { lead: Lead }) {
+  const ref = useRef<HTMLDetailsElement>(null);
+  const [copied, setCopied] = useState("");
+  const close = () => {
+    if (ref.current) ref.current.open = false;
+  };
+  const onToggle = () => {
+    const menu = ref.current;
+    if (!menu?.open) return;
+    // Listen only while open: up to 1000 rows must not each hold a document listener.
+    const outside = (e: Event) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !menu.contains(e.target as Node)) {
+        menu.open = false;
+        document.removeEventListener("click", outside);
+        document.removeEventListener("keydown", outside);
+      }
+    };
+    setTimeout(() => {
+      document.addEventListener("click", outside);
+      document.addEventListener("keydown", outside);
+    });
+  };
+  const copy = async (what: string, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(`${what} copied`);
+    } catch {
+      setCopied(`Could not copy the ${what.toLowerCase()}`);
+    }
+    close();
+    setTimeout(() => setCopied(""), 2000);
+  };
+  const item = "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-on-surface hover:bg-surface-container-low";
+  return (
+    <details ref={ref} onToggle={onToggle} className="relative inline-block">
+      <summary
+        aria-label={`Actions for ${lead.name}`}
+        className="flex size-8 cursor-pointer list-none items-center justify-center rounded-md text-on-surface-variant hover:bg-surface-container-low [&::-webkit-details-marker]:hidden"
+      >
+        <MoreHorizontal className="size-4" aria-hidden="true" />
+      </summary>
+      <div className="absolute right-0 top-9 z-20 flex w-48 flex-col rounded-lg bg-surface-container-lowest p-1.5 shadow-e2 ring-1 ring-outline-variant">
+        <Link href={`/dashboard/leads/${lead.id}`} className={item}>
+          <ExternalLink className="size-4 text-on-surface-variant" aria-hidden="true" /> Open lead
+        </Link>
+        <button type="button" className={item} onClick={() => copy("Mobile", lead.mobile)}>
+          <Phone className="size-4 text-on-surface-variant" aria-hidden="true" /> Copy mobile
+        </button>
+      </div>
+      <span role="status" className="sr-only">
+        {copied}
+      </span>
+    </details>
+  );
+}
