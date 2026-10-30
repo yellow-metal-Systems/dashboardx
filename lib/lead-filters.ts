@@ -158,3 +158,34 @@ export function leadMetrics(leads: Lead[]): LeadMetrics {
     disbursed: leads.filter((l) => l.status === "DISBURSED").length,
   };
 }
+
+/**
+ * The same three numbers for the window just before `range`, equally long, so a
+ * card can say "↗ 20%". Null for all time, which has no window before it.
+ */
+export function previousWindowMetrics(leads: Lead[], range: TimeRange, now = new Date()): LeadMetrics | null {
+  const start = rangeStart(range, now);
+  if (!start) return null;
+  const prevStart = new Date(start.getTime() - (now.getTime() - start.getTime()));
+  return leadMetrics(
+    leads.filter((l) => {
+      const t = new Date(l.createdAt);
+      return t >= prevStart && t < start;
+    })
+  );
+}
+
+/** How many leads matching `pick` were created on each of the last `days` days (local time), oldest first. */
+export function dailyCounts(leads: Lead[], days: number, pick: (l: Lead) => boolean, now = new Date()): number[] {
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const counts = new Array<number>(days).fill(0);
+  for (const l of leads) {
+    if (!pick(l)) continue;
+    const d = new Date(l.createdAt);
+    d.setHours(0, 0, 0, 0);
+    const ago = Math.round((today.getTime() - d.getTime()) / DAY_MS);
+    if (ago >= 0 && ago < days) counts[days - 1 - ago]++;
+  }
+  return counts;
+}

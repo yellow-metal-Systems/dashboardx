@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { EMPTY_FILTERS, applyLeadFilters, countActiveFilters } from "@/lib/lead-filters";
+import { EMPTY_FILTERS, applyLeadFilters, countActiveFilters, dailyCounts, previousWindowMetrics } from "@/lib/lead-filters";
 import { LEADS } from "./fixtures";
 
 const all = LEADS;
@@ -97,5 +97,27 @@ describe("countActiveFilters", () => {
     expect(
       countActiveFilters({ ...EMPTY_FILTERS, status: "DISBURSED", newCustomer: "no" })
     ).toBe(2);
+  });
+});
+
+describe("KPI trend helpers", () => {
+  const now = new Date(2026, 9, 30, 12, 0); // 30 Oct 2026, noon local
+  const at = (daysAgo: number, extra: Partial<(typeof LEADS)[number]> = {}) => ({
+    ...LEADS[0],
+    id: `L${daysAgo}-${Math.random()}`,
+    createdAt: new Date(now.getTime() - daysAgo * 86_400_000).toISOString(),
+    ...extra,
+  });
+
+  it("compares a range with the equally long window just before it", () => {
+    const leads = [at(1), at(2, { status: "DISBURSED" }), at(8, { isNewCustomer: true }), at(9, { isNewCustomer: false }), at(20)];
+    expect(previousWindowMetrics(leads, "week", now)).toEqual({ total: 2, newCustomers: 1, disbursed: 0 });
+    expect(previousWindowMetrics(leads, "all", now)).toBeNull();
+  });
+
+  it("counts leads per day, oldest first, leaving out older ones", () => {
+    const leads = [at(0), at(0), at(2), at(6), at(7)];
+    expect(dailyCounts(leads, 7, () => true, now)).toEqual([1, 0, 0, 0, 1, 0, 2]);
+    expect(dailyCounts(leads, 7, (l) => l.status === "DISBURSED", now)).toEqual([0, 0, 0, 0, 0, 0, 0]);
   });
 });

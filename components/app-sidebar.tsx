@@ -13,6 +13,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuBadge,
@@ -21,16 +22,19 @@ import {
 } from "@/components/ui/sidebar";
 
 // Each item shows only for roles holding its permission; the page itself 404s regardless.
-const NAV_ITEMS: { title: string; href: string; icon: typeof Inbox; permission: Permission; prefixes: string[] }[] = [
-  { title: "Leads", href: "/dashboard", icon: Inbox, permission: "leads.view", prefixes: ["/dashboard/leads"] },
-  { title: "LMS review", href: "/dashboard/leads/lms-review", icon: ClipboardCheck, permission: "lms.resolve", prefixes: [] },
-  { title: "Partners", href: "/dashboard/partners", icon: Building2, permission: "partners.view", prefixes: ["/dashboard/partners/"] },
+// Grouped like the reference sidebar: what a section is for reads before its items.
+const SECTIONS = ["Leads", "Partners", "Admin"] as const;
+
+const NAV_ITEMS: { title: string; href: string; icon: typeof Inbox; permission: Permission; prefixes: string[]; section: (typeof SECTIONS)[number] }[] = [
+  { title: "Leads", href: "/dashboard", icon: Inbox, permission: "leads.view", prefixes: ["/dashboard/leads"], section: "Leads" },
+  { title: "LMS review", href: "/dashboard/leads/lms-review", icon: ClipboardCheck, permission: "lms.resolve", prefixes: [], section: "Leads" },
+  { title: "Partners", href: "/dashboard/partners", icon: Building2, permission: "partners.view", prefixes: ["/dashboard/partners/"], section: "Partners" },
   // The onboarding emails; in demo (log) mode, the mailbox the flow is followed from.
-  { title: "Sent emails", href: "/dashboard/emails", icon: Mail, permission: "partners.manage", prefixes: ["/dashboard/emails/"] },
-  { title: "Rewards", href: "/dashboard/rewards", icon: Wallet, permission: "rewards.view", prefixes: ["/dashboard/rewards/"] },
-  { title: "Team", href: "/dashboard/team", icon: Users, permission: "team.manage", prefixes: [] },
+  { title: "Sent emails", href: "/dashboard/emails", icon: Mail, permission: "partners.manage", prefixes: ["/dashboard/emails/"], section: "Partners" },
+  { title: "Rewards", href: "/dashboard/rewards", icon: Wallet, permission: "rewards.view", prefixes: ["/dashboard/rewards/"], section: "Partners" },
+  { title: "Team", href: "/dashboard/team", icon: Users, permission: "team.manage", prefixes: [], section: "Admin" },
   // Overview lists top partners, so it follows partners.view (admins), like Partners.
-  { title: "Overview", href: "/dashboard/overview", icon: LayoutDashboard, permission: "partners.view", prefixes: [] },
+  { title: "Overview", href: "/dashboard/overview", icon: LayoutDashboard, permission: "partners.view", prefixes: [], section: "Admin" },
 ];
 
 type Props = {
@@ -73,37 +77,48 @@ export function AppSidebar({ staffName, staffEmail, role, permissions, pendingAp
       </SidebarHeader>
       <SidebarContent>
         <nav aria-label="Main">
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {items.map((item) => (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={item.href === activeHref}>
-                      <Link href={item.href} aria-current={item.href === activeHref ? "page" : undefined}>
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                    {item.href === "/dashboard/partners" && pendingApplications > 0 && (
-                      <SidebarMenuBadge>
-                        {pendingApplications}
-                        <span className="sr-only"> applications waiting</span>
-                      </SidebarMenuBadge>
+          {SECTIONS.map((section) => {
+            const list = items.filter((item) => item.section === section);
+            // Every member has Settings (their own account), so Admin always shows.
+            if (list.length === 0 && section !== "Admin") return null;
+            return (
+              <SidebarGroup key={section} className="py-1">
+                <SidebarGroupLabel className="h-7 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-sidebar-muted">
+                  {section}
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {list.map((item) => (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton asChild isActive={item.href === activeHref}>
+                          <Link href={item.href} aria-current={item.href === activeHref ? "page" : undefined}>
+                            <item.icon />
+                            <span>{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                        {item.href === "/dashboard/partners" && pendingApplications > 0 && (
+                          <SidebarMenuBadge>
+                            {pendingApplications}
+                            <span className="sr-only"> applications waiting</span>
+                          </SidebarMenuBadge>
+                        )}
+                      </SidebarMenuItem>
+                    ))}
+                    {section === "Admin" && (
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/settings")}>
+                          <Link href="/dashboard/settings" aria-current={pathname.startsWith("/dashboard/settings") ? "page" : undefined}>
+                            <Settings />
+                            <span>Settings</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
                     )}
-                  </SidebarMenuItem>
-                ))}
-                {/* Every member has Settings (their own account), so it needs no permission. */}
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/settings")}>
-                    <Link href="/dashboard/settings" aria-current={pathname.startsWith("/dashboard/settings") ? "page" : undefined}>
-                      <Settings />
-                      <span>Settings</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            );
+          })}
         </nav>
       </SidebarContent>
       {/* Partners sign in and submit leads in the separate LeadBridge app, not here. */}

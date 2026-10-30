@@ -19,7 +19,6 @@ import {
 import { LeadFilters } from "@/components/leads/lead-filters";
 import { LeadRow } from "@/components/leads/lead-row";
 import { SegmentedControl } from "@/components/segmented-control";
-import { StatTile } from "@/components/stat-tile";
 import {
   DisbursementDialog,
   type DisbursementInput,
@@ -40,7 +39,9 @@ import {
   TIME_RANGE_LABELS,
   applyLeadFilters,
   applyTimeRange,
+  dailyCounts,
   leadMetrics,
+  previousWindowMetrics,
   type LeadFilters as Filters,
   type TimeRange,
 } from "@/lib/lead-filters";
@@ -173,6 +174,15 @@ export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 
     [leads, range, custom]
   );
   const stats = useMemo(() => leadMetrics(rangedLeads), [rangedLeads]);
+  const previous = useMemo(() => (range === "custom" ? null : previousWindowMetrics(leads, range)), [leads, range]);
+  const daily = useMemo(
+    () => ({
+      total: dailyCounts(leads, 14, () => true),
+      newCustomers: dailyCounts(leads, 14, (l) => l.isNewCustomer),
+      disbursed: dailyCounts(leads, 14, (l) => l.status === "DISBURSED"),
+    }),
+    [leads]
+  );
 
   const filteredLeads = useMemo(
     () => applyLeadFilters(rangedLeads, filters),
@@ -190,7 +200,9 @@ export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 
           <p className="text-xs font-medium uppercase tracking-wide text-on-surface-variant">
             Internal
           </p>
-          <h1 className="mt-1 text-heading-lg text-on-surface">Leads</h1>
+          <h1 className="mt-1 text-heading-lg text-on-surface">
+            Leads <span className="ml-1 text-heading-md font-medium tabular-nums text-on-surface-variant">{leads.length}</span>
+          </h1>
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-on-surface-variant">
             <span className="tabular-nums">
               {leads.length} total · {filteredLeads.length} shown
@@ -250,11 +262,12 @@ export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 
           )}
         </div>
 
-        <div className="grid grid-cols-3 gap-3 md:max-w-xl">
-          <StatTile label="Total leads" value={stats.total} />
-          <StatTile label="New" value={stats.newCustomers} />
-          <StatTile label="Disbursed" value={stats.disbursed} />
-        </div>
+        {/* One strip, like the reference: each number with its change vs the window before and the last 14 days. */}
+        <Card className="grid divide-y divide-outline-variant overflow-hidden sm:grid-cols-3 sm:divide-x sm:divide-y-0 md:max-w-4xl">
+          <Kpi label="Total leads" value={stats.total} before={previous?.total} days={daily.total} />
+          <Kpi label="New" value={stats.newCustomers} before={previous?.newCustomers} days={daily.newCustomers} />
+          <Kpi label="Disbursed" value={stats.disbursed} before={previous?.disbursed} days={daily.disbursed} />
+        </Card>
       </div>
 
       <Card className="shadow-e1">
@@ -284,7 +297,7 @@ export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="[&>th]:whitespace-nowrap">
+                <TableRow className="[&>th]:h-9 [&>th]:whitespace-nowrap [&>th]:text-[10.5px] [&>th]:font-semibold [&>th]:uppercase [&>th]:tracking-[0.07em]">
                   <TableHead>Consumer</TableHead>
                   <TableHead>Mobile</TableHead>
                   <TableHead>Pincode</TableHead>
@@ -292,6 +305,9 @@ export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 
                   <TableHead>Partner</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Submitted</TableHead>
+                  <TableHead className="w-10">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -348,5 +364,39 @@ function NewLeadsBadge({ leads }: { leads: Lead[] }) {
         </Badge>
       )}
     </span>
+  );
+}
+
+/** A headline number with its change against the window before (when the range has one) and a 14-day line. */
+function Kpi({ label, value, before, days }: { label: string; value: number; before?: number; days: number[] }) {
+  // No arrow without a window before, or when it was zero (a % of nothing says nothing).
+  const change = before ? Math.round(((value - before) / before) * 100) : null;
+  return (
+    <div className="flex items-end justify-between gap-3 p-4 md:p-5">
+      <div>
+        <p className="text-xs text-on-surface-variant">{label}</p>
+        <p className="mt-1 flex items-baseline gap-2 text-heading-xl tabular-nums text-on-surface">
+          {value}
+          {change !== null && (
+            <span className={cn("text-xs font-semibold", change >= 0 ? "text-on-success-soft" : "text-on-error-soft")}>
+              {change >= 0 ? "↗" : "↘"} {Math.abs(change)}%<span className="sr-only"> compared with the period before</span>
+            </span>
+          )}
+        </p>
+      </div>
+      <Sparkline values={days} label={`${label}: ${days.reduce((a, b) => a + b, 0)} in the last 14 days`} />
+    </div>
+  );
+}
+
+function Sparkline({ values, label }: { values: number[]; label: string }) {
+  const w = 96;
+  const h = 32;
+  const max = Math.max(1, ...values);
+  const points = values.map((v, i) => `${((i / (values.length - 1)) * w).toFixed(1)},${(h - 2 - (v / max) * (h - 4)).toFixed(1)}`).join(" ");
+  return (
+    <svg role="img" aria-label={label} width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="shrink-0 text-on-surface-variant">
+      <polyline points={points} fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
   );
 }
