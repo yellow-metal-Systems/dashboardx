@@ -19,6 +19,7 @@ import {
 import { LeadFilters } from "@/components/leads/lead-filters";
 import { LeadRow } from "@/components/leads/lead-row";
 import { SegmentedControl } from "@/components/segmented-control";
+import { StatStrip, StatTile } from "@/components/stat-tile";
 import {
   DisbursementDialog,
   type DisbursementInput,
@@ -39,7 +40,6 @@ import {
   TIME_RANGE_LABELS,
   applyLeadFilters,
   applyTimeRange,
-  dailyCounts,
   leadMetrics,
   previousWindowMetrics,
   type LeadFilters as Filters,
@@ -175,14 +175,6 @@ export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 
   );
   const stats = useMemo(() => leadMetrics(rangedLeads), [rangedLeads]);
   const previous = useMemo(() => (range === "custom" ? null : previousWindowMetrics(leads, range)), [leads, range]);
-  const daily = useMemo(
-    () => ({
-      total: dailyCounts(leads, 14, () => true),
-      newCustomers: dailyCounts(leads, 14, (l) => l.isNewCustomer),
-      disbursed: dailyCounts(leads, 14, (l) => l.status === "DISBURSED"),
-    }),
-    [leads]
-  );
 
   const filteredLeads = useMemo(
     () => applyLeadFilters(rangedLeads, filters),
@@ -259,12 +251,12 @@ export function LeadsDashboard({ initialLeads, partners, branches, lmsToMatch = 
           )}
         </div>
 
-        {/* One strip, like the reference: each number with its change vs the window before and the last 14 days. */}
-        <Card className="grid divide-y divide-outline-variant overflow-hidden sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-          <Kpi label="Total leads" value={stats.total} before={previous?.total} days={daily.total} />
-          <Kpi label="New customers" value={stats.newCustomers} before={previous?.newCustomers} days={daily.newCustomers} />
-          <Kpi label="Disbursed" value={stats.disbursed} before={previous?.disbursed} days={daily.disbursed} />
-        </Card>
+        {/* The same strip as Overview and Rewards; the note says how the range compares with the one before. */}
+        <StatStrip className="lg:grid-cols-3">
+          <StatTile label="Total leads" value={stats.total} note={trend(stats.total, previous?.total)} />
+          <StatTile label="New customers" value={stats.newCustomers} note={trend(stats.newCustomers, previous?.newCustomers)} />
+          <StatTile label="Disbursed" value={stats.disbursed} note={trend(stats.disbursed, previous?.disbursed)} />
+        </StatStrip>
       </div>
 
       <Card className="shadow-e1">
@@ -360,36 +352,13 @@ function NewLeadsBadge({ leads }: { leads: Lead[] }) {
   );
 }
 
-/** A headline number with its change against the window before (when the range has one) and a 14-day line. */
-function Kpi({ label, value, before, days }: { label: string; value: number; before?: number; days: number[] }) {
-  // No arrow without a window before, or when it was zero (a % of nothing says nothing).
-  const change = before ? Math.round(((value - before) / before) * 100) : null;
+/** "↗ 20% vs the period before". Nothing without a period before, or when it was zero (a % of nothing says nothing). */
+function trend(value: number, before?: number) {
+  if (!before) return undefined;
+  const change = Math.round(((value - before) / before) * 100);
   return (
-    <div className="flex items-end justify-between gap-3 p-4 md:p-5">
-      <div>
-        <p className="text-xs text-on-surface-variant">{label}</p>
-        <p className="mt-1 flex items-baseline gap-2 text-heading-xl tabular-nums text-on-surface">
-          {value}
-          {change !== null && (
-            <span className={cn("text-xs font-semibold", change >= 0 ? "text-on-success-soft" : "text-on-error-soft")}>
-              {change >= 0 ? "↗" : "↘"} {Math.abs(change)}%<span className="sr-only"> compared with the period before</span>
-            </span>
-          )}
-        </p>
-      </div>
-      <Sparkline values={days} label={`${label}: ${days.reduce((a, b) => a + b, 0)} in the last 14 days`} />
-    </div>
-  );
-}
-
-function Sparkline({ values, label }: { values: number[]; label: string }) {
-  const w = 96;
-  const h = 32;
-  const max = Math.max(1, ...values);
-  const points = values.map((v, i) => `${((i / (values.length - 1)) * w).toFixed(1)},${(h - 2 - (v / max) * (h - 4)).toFixed(1)}`).join(" ");
-  return (
-    <svg role="img" aria-label={label} width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="shrink-0 text-on-surface-variant">
-      <polyline points={points} fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinejoin="round" strokeLinecap="round" />
-    </svg>
+    <span className={cn("font-semibold", change >= 0 ? "text-on-success-soft" : "text-on-error-soft")}>
+      {change >= 0 ? "↗" : "↘"} {Math.abs(change)}% vs the period before
+    </span>
   );
 }

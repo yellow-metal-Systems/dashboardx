@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { EMPTY_FILTERS, applyLeadFilters, countActiveFilters, dailyCounts, previousWindowMetrics } from "@/lib/lead-filters";
+import { EMPTY_FILTERS, applyLeadFilters, countActiveFilters, previousWindowMetrics } from "@/lib/lead-filters";
 import { LEADS } from "./fixtures";
 
 const all = LEADS;
@@ -119,11 +119,5 @@ describe("KPI trend helpers", () => {
     const hoursAgo = (h: number) => ({ ...LEADS[0], id: `H${h}`, createdAt: new Date(now.getTime() - h * 3_600_000).toISOString() });
     // now is noon: 26 h ago is 10 am yesterday (counts), 14 h ago is 10 pm yesterday (does not).
     expect(previousWindowMetrics([hoursAgo(26), hoursAgo(14)], "today", now)?.total).toBe(1);
-  });
-
-  it("counts leads per day, oldest first, leaving out older ones", () => {
-    const leads = [at(0), at(0), at(2), at(6), at(7)];
-    expect(dailyCounts(leads, 7, () => true, now)).toEqual([1, 0, 0, 0, 1, 0, 2]);
-    expect(dailyCounts(leads, 7, (l) => l.status === "DISBURSED", now)).toEqual([0, 0, 0, 0, 0, 0, 0]);
   });
 });

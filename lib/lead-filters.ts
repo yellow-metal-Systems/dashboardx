@@ -178,18 +178,3 @@ export function previousWindowMetrics(leads: Lead[], range: TimeRange, now = new
     })
   );
 }
-
-/** How many leads matching `pick` were created on each of the last `days` days (local time), oldest first. */
-export function dailyCounts(leads: Lead[], days: number, pick: (l: Lead) => boolean, now = new Date()): number[] {
-  const today = new Date(now);
-  today.setHours(0, 0, 0, 0);
-  const counts = new Array<number>(days).fill(0);
-  for (const l of leads) {
-    if (!pick(l)) continue;
-    const d = new Date(l.createdAt);
-    d.setHours(0, 0, 0, 0);
-    const ago = Math.round((today.getTime() - d.getTime()) / DAY_MS);
-    if (ago >= 0 && ago < days) counts[days - 1 - ago]++;
-  }
-  return counts;
-}
