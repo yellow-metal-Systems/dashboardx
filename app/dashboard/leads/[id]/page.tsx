@@ -182,15 +182,14 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
             <section className="flex flex-col gap-4">
               <SectionTitle>Requested vs actual</SectionTitle>
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="flex flex-col gap-3 rounded-lg bg-surface-container-low p-4" data-requested>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Requested</p>
+                <div className="flex flex-col gap-1.5 rounded-lg bg-surface-container-low p-4 md:p-5" data-requested>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Requested</p>
                   <p className="text-heading-lg tabular-nums text-on-surface">
-                    {lead.loanAmountEstimated && lead.goldGrams !== null && requestedAmount !== null
-                      ? `${lead.goldGrams} g gold, estimated ${formatInr(requestedAmount)}`
-                      : requestedAmount !== null
-                        ? formatInr(requestedAmount)
-                        : "—"}
+                    {requestedAmount !== null ? formatInr(requestedAmount) : "—"}
                   </p>
+                  {lead.loanAmountEstimated && lead.goldGrams !== null && requestedAmount !== null && (
+                    <p className="text-sm text-on-surface-variant">Estimated from {lead.goldGrams} g gold</p>
+                  )}
                   {requestedPlan && <p className="text-sm text-on-surface">{requestedPlan}</p>}
                   {isAarthik && (
                     <p className="text-xs text-on-surface-variant">
@@ -214,8 +213,8 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
                     ))}
                 </div>
 
-                <div className="flex flex-col gap-3 rounded-lg bg-surface-container-low p-4" data-actual>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Actual</p>
+                <div className="flex flex-col gap-1.5 rounded-lg bg-surface-container-low p-4 md:p-5" data-actual>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Actual</p>
                   {lead.disbursementAmount !== null ? (
                     <>
                       <p className="text-heading-lg tabular-nums text-on-surface">{formatInr(lead.disbursementAmount)}</p>
@@ -256,13 +255,14 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
         </Card>
 
         <Card className="lg:sticky lg:top-6">
-          <CardContent className="flex flex-col gap-4 pt-6">
+          {/* Explicit md: padding: CardContent's default md:pt-0 left the heading on the card's edge. */}
+          <CardContent className="flex flex-col gap-4 p-5 md:p-6 md:pt-6">
             <section className="flex flex-col gap-4">
               <SectionTitle>Activity</SectionTitle>
               {activities.length === 0 ? (
                 <p className="text-sm text-on-surface-variant">No activity recorded.</p>
               ) : (
-                <ol className="flex flex-col gap-3 border-l-2 border-outline-variant pl-4">
+                <ol className="flex flex-col gap-4 border-l-2 border-outline-variant pl-4">
                   {activities.map((a) => {
                     const by = a.actor ? actorLabel(a.actor, actorNames) : null;
                     // shortcut: matches serverx's "Status changed X → Disbursed" text; if that wording
@@ -272,15 +272,16 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
                         ? `Disbursed ${formatInr(lead.disbursementAmount)}`
                         : a.message;
                     return (
-                      <li key={a.id} className="relative text-sm text-on-surface">
+                      <li key={a.id} className="relative min-w-0 text-sm leading-5 text-on-surface">
                         <span aria-hidden="true" className="absolute -left-[21px] top-1.5 size-2 rounded-full bg-outline" />
-                        <time dateTime={a.createdAt} className="text-on-surface-variant">
+                        <time dateTime={a.createdAt} className="block text-xs text-on-surface-variant">
                           {activityTime.format(new Date(a.createdAt))}
                         </time>
-                        {" · "}
-                        {message}
-                        {/* Skipped when the message already names them ("…by Asha Rao"). */}
-                        {by && !message.includes(by) && <span className="text-on-surface-variant"> by {by}</span>}
+                        <p className="mt-0.5 break-words">
+                          {message}
+                          {/* Skipped when the message already names them ("…by Asha Rao"). */}
+                          {by && !message.includes(by) && <span className="text-on-surface-variant"> by {by}</span>}
+                        </p>
                       </li>
                     );
                   })}
